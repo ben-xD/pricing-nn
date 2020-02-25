@@ -155,11 +155,6 @@ class LinearLayer(Layer):
         Arguments:
             n_in {int} -- Number (or dimension) of inputs.
             n_out {int} -- Number (or dimension) of outputs.
-            _W {np.ndarray} -- Weights matrix (n_in, n_out)
-            _b {np.ndarray} -- Bias matrix (n_in, n_out)
-            _cache_current {} -- ????????????????????????????
-            _grad_W_current {np.ndarray} -- Current weights matrix used for update. 
-            _grad_b_current {np.ndarray} -- Current bias matrix used for update.
         """
         self.n_in = n_in
         self.n_out = n_out
@@ -167,13 +162,12 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        size = self.n_in + self.n_out
-        self._W = xavier_init(size)
-        self._b = np.zeros(size)
+        self._W = xavier_init(self.n_in)
+        self._b = xavier_init(self.n_in)
 
-        #self._cache_current = (self._W, self._b) ????????????????????????????????????????????????????????????????????????????????????????????????????
-        self._grad_W_current = self._W
-        self._grad_b_current = self._b
+        self._cache_current = None
+        self._grad_W_current = None
+        self._grad_b_current = None
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -195,8 +189,12 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        wx = np.dot(self._W,x)
+        z = np.add(wx, self._b)
 
+        self._cache_current = x
+
+        return z
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -218,7 +216,13 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        grad_bias = np.ones((batch_size,1))
+
+        self._grad_W_current = grad_z * np.transpose(self._cache_current)
+        self._grad_b_current = grad_z * np.transpose(grad_bias)
+
+        return grad_z * np.transpose(self._W)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
