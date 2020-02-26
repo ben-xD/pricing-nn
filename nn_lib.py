@@ -98,7 +98,12 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        sigmoid = 1 / (1 + np.exp(-x))
+       
+        self._cache_current = sigmoid
+        
+        return sigmoid
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -108,7 +113,9 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        grad_sigmoid = self._cache_current * (1-self._cache_current)
+        return np.multiply(grad_z, grad_sigmoid)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -127,7 +134,11 @@ class ReluLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        relu = x * (x > 0)
+       
+        self._cache_current = relu
+        
+        return relu
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -137,7 +148,11 @@ class ReluLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        dz = np.array(grad_z, copy = True)
+        grad_relu = np.where(self._cache_current > 0, dz, 0)
+       
+        return np.multiply(grad_z, grad_relu)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -217,6 +232,7 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
         
+        batch_size = grad_z.shape[0]
         grad_bias = np.ones((batch_size,1))
 
         self._grad_W_current = grad_z * np.transpose(self._cache_current)
@@ -239,7 +255,9 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        self._W -= learning_rate * self._grad_W_current
+        self._b -= learning_rate * self._grad_b_current
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -269,7 +287,24 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._layers = None
+        
+        self._layers = []
+
+        for i in enumerate(neurons):
+            
+            linear_layer = LinearLayer(input_dim, neurons[i])
+            self._layers.append(linear_layer)
+            
+            if activation[i] == "relu":
+                
+                activation_layer = ReluLayer()
+                self.layers.append(activation_layer)
+
+            if activation[i] == "sigmoid":
+                
+                activation_layer = SigmoidLayer()
+                self.layers.append(activation_layer)           
+ 
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -288,7 +323,12 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        for layer in self._layers:
+            
+            x = layer.forward(x)
+
+        return x
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -312,7 +352,12 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        for layer in self._layers.reverse():
+
+            grad_z = layer.backward(grad_z)
+
+        return grad_z
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -329,7 +374,10 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        
+        for layer in self.layers:
+
+            layer.update_params(learning_rate)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
