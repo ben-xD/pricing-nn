@@ -581,6 +581,7 @@ class Preprocessor(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
         
+        self.data_size = data.shape
         self._min = np.amin(data)
         self._max = np.amax(data)
 
@@ -602,9 +603,11 @@ class Preprocessor(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
         
-        data_copy = data
+        if data.shape != self.data_size
+            
+            return
 
-        data_copy = (data_copy - self._min) / (self._max - self._min)
+        data = (data - self._min) / (self._max - self._min)
 
         return data_copy
 
