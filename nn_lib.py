@@ -583,6 +583,7 @@ class Preprocessor(object):
         
         self._min = np.amin(data)
         self._max = np.amax(data)
+        self.original_data = data
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -630,7 +631,7 @@ class Preprocessor(object):
 
         original_data = (original_data * (self._max - self._min)) + self._min
 
-        return original_data
+        return self.original_data
 
         #######################################################################
         #                       ** END OF YOUR CODE **
