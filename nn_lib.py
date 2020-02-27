@@ -580,10 +580,10 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        
-        self._min = np.amin(data)
-        self._max = np.amax(data)
-
+        self.min_values = np.amin(data, axis = 0)
+        self.max_values = np.amax(data, axis = 0)
+        self.x_min = np.zeros(len(data[0]))
+        self.x_max = np.ones(len(data[0]))
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -601,13 +601,12 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        
-        data_copy = data
+        data_norm = data
 
-        data_copy = (data_copy - self._min) / (self._max - self._min)
+        for row in range(0, len(data)):
+            data_norm[row] = (data[row] - self.min_values) / (self.max_values - self.min_values) #* (self.x_max - self.x_min) / (self.max_values - self.min_values)
 
-        return data_copy
-
+        return data_norm
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -625,13 +624,12 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        
-        original_data = data
+        data_reversed = data
 
-        original_data = (original_data * (self._max - self._min)) + self._min
+        for row in len(data):
+            data_reversed[row] = data[row] * (self.max_values - self.min_values) + self.min_values
 
-        return original_data
-
+        return data_reversed
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
