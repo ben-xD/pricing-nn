@@ -581,6 +581,7 @@ class Preprocessor(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
         
+        self.data_shape = data.shape[1]
         self._min = np.min(data, axis=0)
         self._max = np.max(data, axis=0)
 
@@ -601,6 +602,10 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+
+        if self.data_shape != data.shape[1]:
+
+            raise ValueError("shape of data is inconsistent with initialization")
 
         data = (data - self._min) / (self._max - self._min)
 
@@ -624,6 +629,10 @@ class Preprocessor(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
   
+        if self.data_shape != data.shape[1]:
+
+            raise ValueError("shape of data is inconsistent with initialization")
+
         data = (data * (self._max - self._min)) + self._min
 
         return data
