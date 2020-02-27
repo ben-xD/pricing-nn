@@ -11,10 +11,10 @@ import torch.utils.data as data
 from torch.utils.data import DataLoader, TensorDataset
 
 from NeuralNet import NeuralNet
-from statistics import mean # TODO - can this be imported?
+from statistics import mean  # TODO - can this be imported?
 import matplotlib.pyplot as plt
 
-#METRICS
+# METRICS
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_auc_score
@@ -60,8 +60,7 @@ class ClaimClassifier():
         # Return full dataset, normalised dataset without dropping the columns as numpy array
         return X_scaled
 
-
-    def fit(self, X_raw, y_raw):
+    def fit(self, X_raw, y_raw, weighting=1, learning_rate=0.001, batch_size=20):
         """Classifier training function.
 
         Here you will implement the training function for your classifier.
@@ -86,9 +85,9 @@ class ClaimClassifier():
         # TODO - save these somewhere else: Hyperparameters
         hidden_size = 50  # model
         num_epochs = 20  # fit / train
-        batch_size = 10  # fit / train
-        learning_rate = 0.001  # fit / train
-        weighting = 8  # fit / train
+        # batch_size = 10  # fit / train
+        # learning_rate = 0.001  # fit / train
+        # weighting = 8  # fit / train
 
         # Shuffle dataset
         state = np.random.get_state()
@@ -96,7 +95,7 @@ class ClaimClassifier():
         np.random.set_state(state)
         np.random.shuffle(y_raw)
 
-        #Splitting the data - TODO - validation
+        # Splitting the data - TODO - validation
         percentile_60 = int(X_raw.shape[0] * 0.6)
         percentile_80 = int(X_raw.shape[0] * 0.8)
 
@@ -134,8 +133,7 @@ class ClaimClassifier():
 
         # Validations dataset
         val_ds = TensorDataset(x_val, y_val)
-        val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False)       
-
+        val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
 
         # Input and Output
         num_inputs = train_data.shape[1]
@@ -152,7 +150,7 @@ class ClaimClassifier():
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 
-        #TODO - to delete
+        # TODO - to delete
         epochs_list = []
         training_loss = []
         batch_loss = []
@@ -176,7 +174,7 @@ class ClaimClassifier():
             epochs_list.append(epoch)
             print(epoch)
             training_loss.append(mean(batch_loss))
-            #accuracy_list.append(mean(batch_accuracy))
+            # accuracy_list.append(mean(batch_accuracy))
 
         plt.plot(epochs_list, training_loss, 'g', label='Training loss')
         # plt.plot(epochs_list, accuracy_for_one, 'b', label='Accuracy for 1')
@@ -189,7 +187,7 @@ class ClaimClassifier():
 
         self.trained_model = model
 
-        return model #TODO - not correct thing to do?
+        return model  # TODO - not correct thing to do?
 
     def predict(self, X_raw):
         """Classifier probability prediction function.
@@ -221,20 +219,18 @@ class ClaimClassifier():
 
         x_test = torch.from_numpy(X_clean.astype(float))
 
-
-        #TODO = also need to normalise data
+        # TODO = also need to normalise data
 
         with torch.no_grad():
             outputs = self.trained_model(x_test.float())
             print(outputs)
 
-        #Convert the outputs to probabilities
+        # Convert the outputs to probabilities
         sigmoid = nn.Sigmoid()
         predictions = sigmoid(outputs)
         print(predictions.flatten().numpy())
 
-        return predictions.flatten().numpy() #PREDICTED CLASS LABELS (as probabilites)
-
+        return predictions.flatten().numpy()  # PREDICTED CLASS LABELS (as probabilites)
 
     def evaluate_architecture(self, probabilities, labels):
         """Architecture evaluation utility.
@@ -246,7 +242,7 @@ class ClaimClassifier():
         if necessary.
         """
 
-        #Need to convert the probabilities into binary classification
+        # Need to convert the probabilities into binary classification
         sigmoid = nn.Sigmoid()
         predictions = probabilities.round()
         print(predictions)
@@ -259,7 +255,6 @@ class ClaimClassifier():
         print(f'auc: {roc_auc_score(labels, probabilities)}')
         print(accuracy_score(labels, predictions))
         print(labels, predictions)
-
 
     def save_model(self):
         # Please alter this file appropriately to work in tandem with your load_model function below
@@ -274,6 +269,8 @@ def load_model():
     return trained_model
 
 # ENSURE TO ADD IN WHATEVER INPUTS YOU DEEM NECESSARRY TO THIS FUNCTION
+
+
 def ClaimClassifierHyperParameterSearch():
     """Performs a hyper-parameter for fine-tuning the classifier.
 
@@ -283,34 +280,40 @@ def ClaimClassifierHyperParameterSearch():
     The function should return your optimised hyper-parameters. 
     """
 
-    #List of hyperparameters
-    params = {
-        'hidden_size': list(range(5, 500)),
-        'num_epochs': list(range(30, 200)),
-        'batch_size': list(range(10,100)),
-        'learning_rate': list(np.logspace(np.log10(0.005), np.log10(0.5), base = 10, num = 1000)),
-        'weighting': list(range(2,10))
-    }
+    # List of hyperparameters
+    # params = {
+    #     'weighting': list(range(2, 10)),
+    #     'learning_rate': list(np.logspace(np.log10(0.005), np.log10(0.5), base=10, num=1000)),
+    #     'hidden_size': list(range(5, 500)),
+    #     'batch_size': list(range(10, 100)),
+    #     'num_epochs': list(range(30, 200)),
+    # }
 
-    
+    learn_rate = 0.001
+    batch_size = 20
+
+    df1 = pd.read_csv('part2_training_data.csv')
+    print(df1)
+
+    X = df1.drop(columns=["claim_amount", "made_claim"])
+    y = df1["made_claim"]
+
+    claimClassifier = ClaimClassifier()
+    claimClassifier.fit(X, y)
+    probabilities = claimClassifier.predict(X)
+    claimClassifier.evaluate_architecture(probabilities, y.to_numpy())
+
+    # weighting_attempts = [i for i in range(10)]
+    # for weighting in weighting_attempts:
+    #     fit(optimizer, threshold)
+    #     self.evaluate_architecture(model, threshold)
 
     return  # Return the chosen hyper parameters
 
+
 def main():
-    print("testing")
-    cc = ClaimClassifier()
+    ClaimClassifierHyperParameterSearch()
 
-    part2_training_data = "https://raw.githubusercontent.com/ben-xD/pricing-nn/master/part2_training_data.csv"
-    df1 = pd.read_csv(part2_training_data)
 
-    data = df1.drop(columns=["claim_amount", "made_claim"])
-    labels = df1["made_claim"]
-
-    cc.fit(data, labels)
-    probabilities = cc.predict(data)
-    cc.evaluate_architecture(probabilities, labels.to_numpy())
-
-if __name__== "__main__":
+if __name__ == "__main__":
     main()
-
-
