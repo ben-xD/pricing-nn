@@ -31,6 +31,7 @@ class ClaimClassifier():
         self.trained_model = None
         self.scaler = None
 
+
     def _preprocessor(self, X_raw):
         """Data preprocessing function.
 
@@ -104,6 +105,8 @@ class ClaimClassifier():
 
         test_data = X_clean[percentile_60:percentile_80]
         test_labels = y_raw[percentile_60:percentile_80]
+        self.test_data = test_data
+        self.test_labels = test_labels
 
         val_data = X_clean[percentile_80:]
         val_labels = y_raw[percentile_80:]
@@ -143,7 +146,7 @@ class ClaimClassifier():
         model = NeuralNet(num_inputs, hidden_size, output_size)
 
         # Weight positive samples higher
-        pos_weight = torch.ones([batch_size])
+        pos_weight = torch.ones([1])
         pos_weight.fill_(weighting)
 
         # Loss criterion and optimizer
@@ -172,22 +175,26 @@ class ClaimClassifier():
                 optimizer.zero_grad()
 
             epochs_list.append(epoch)
-            print(epoch)
+            # print(epoch)
             training_loss.append(mean(batch_loss))
             # accuracy_list.append(mean(batch_accuracy))
 
-        plt.plot(epochs_list, training_loss, 'g', label='Training loss')
         # plt.plot(epochs_list, accuracy_for_one, 'b', label='Accuracy for 1')
 
-        plt.title('Training loss')
-        plt.xlabel('Epochs')
-        plt.ylabel('Loss')
-        plt.legend()
-        plt.show()
+        # plt.plot(epochs_list, training_loss, 'g', label='Training loss')
+        # plt.title('Training loss')
+        # plt.xlabel('Epochs')
+        # plt.ylabel('Loss')
+        # plt.legend()
+        # plt.show()
 
         self.trained_model = model
 
         return model  # TODO - not correct thing to do?
+
+    def get_test_data(self):
+      return [self.test_data, self.test_labels]
+        
 
     def predict(self, X_raw):
         """Classifier probability prediction function.
@@ -223,12 +230,12 @@ class ClaimClassifier():
 
         with torch.no_grad():
             outputs = self.trained_model(x_test.float())
-            print(outputs)
+            # print(outputs)
 
         # Convert the outputs to probabilities
         sigmoid = nn.Sigmoid()
         predictions = sigmoid(outputs)
-        print(predictions.flatten().numpy())
+        # print(predictions.flatten().numpy())
 
         return predictions.flatten().numpy()  # PREDICTED CLASS LABELS (as probabilites)
 
@@ -251,10 +258,12 @@ class ClaimClassifier():
 
         print(classification_report(labels, predictions, target_names=target_names))
 
-        confusion_matrix(labels, predictions)
-        print(f'auc: {roc_auc_score(labels, probabilities)}')
-        print(accuracy_score(labels, predictions))
-        print(labels, predictions)
+        print(confusion_matrix(labels, predictions))
+        auc_score = roc_auc_score(labels, probabilities)
+        print(f'auc: {auc_score}')
+        print("Accuracy: ", accuracy_score(labels, predictions))
+        print("Labels: ", labels, "Predictions: ", predictions)
+        return auc_score
 
     def save_model(self):
         # Please alter this file appropriately to work in tandem with your load_model function below
@@ -289,24 +298,30 @@ def ClaimClassifierHyperParameterSearch():
     #     'num_epochs': list(range(30, 200)),
     # }
 
+    # Hyperparameters
     learn_rate = 0.001
     batch_size = 20
 
     df1 = pd.read_csv('part2_training_data.csv')
-    print(df1)
-
     X = df1.drop(columns=["claim_amount", "made_claim"])
     y = df1["made_claim"]
 
-    claimClassifier = ClaimClassifier()
-    claimClassifier.fit(X, y)
-    probabilities = claimClassifier.predict(X)
-    claimClassifier.evaluate_architecture(probabilities, y.to_numpy())
+    weighting_attempts = [9,9,9,9,9]
+    weighting_auc_scores = []
 
-    # weighting_attempts = [i for i in range(10)]
-    # for weighting in weighting_attempts:
-    #     fit(optimizer, threshold)
-    #     self.evaluate_architecture(model, threshold)
+    claimClassifier = ClaimClassifier()
+
+    for i, weighting in enumerate(weighting_attempts):
+        print("Weighting: ", weighting)
+        model = claimClassifier.fit(X, y, weighting=weighting)
+        [test_data, test_labels] = claimClassifier.get_test_data()
+        print("Test data: ",test_data)
+        probabilities = claimClassifier.predict(pd.DataFrame(test_data))
+        print("probabilities: ",probabilities)
+        auc_score = claimClassifier.evaluate_architecture(probabilities, test_labels)
+        weighting_auc_scores.append(auc_score)
+
+    print(weighting_auc_scores)
 
     return  # Return the chosen hyper parameters
 

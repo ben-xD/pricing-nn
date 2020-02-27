@@ -15,16 +15,4 @@ class NeuralNet(nn.Module):
         out = self.fc1(x)
         out = self.relu(out)
         out = self.fc2(out)
-
         return out
-
-    def accuracy(self, out, yb, batch_size):
-        correct = 0
-        sigmoid = nn.Sigmoid()
-        preds = sigmoid(out).round()
-        for i in range(batch_size):
-            if (preds[i] == yb[i]):
-                correct += 1
-
-        # set_trace()
-        return correct / batch_size
