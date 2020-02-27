@@ -23,12 +23,13 @@ from sklearn.metrics import roc_curve
 
 class ClaimClassifier():
 
-    def __init__(self,):
+    def __init__(self):
         """
         Feel free to alter this as you wish, adding instance variables as
         necessary. 
         """
         self.trained_model = None
+        self.scaler = None
 
     def _preprocessor(self, X_raw):
         """Data preprocessing function.
@@ -38,7 +39,7 @@ class ClaimClassifier():
 
         Parameters
         ----------
-        X_raw : ndarray
+        X_raw : ndarray (Pandas DataFrame)
             An array, this is the raw data as downloaded
 
         Returns
@@ -53,7 +54,8 @@ class ClaimClassifier():
         min_max_scaler = preprocessing.MinMaxScaler()
         X_scaled = min_max_scaler.fit_transform(X_raw)
 
-        # TODO - Save the min_max_scaler object
+        # Save the min_max_scaler object to be used on testing data
+        self.scaler = min_max_scaler
 
         # Return full dataset, normalised dataset without dropping the columns as numpy array
         return X_scaled
@@ -83,18 +85,33 @@ class ClaimClassifier():
 
         # TODO - save these somewhere else: Hyperparameters
         hidden_size = 50  # model
-        num_epochs = 2  # fit / train
+        num_epochs = 20  # fit / train
         batch_size = 10  # fit / train
-        learning_rate = 0.01  # fit / train
-        weighting = 4  # fit / train
+        learning_rate = 0.001  # fit / train
+        weighting = 8  # fit / train
 
-        num_train = int(X_raw.shape[0] * 0.8)
+        # Shuffle dataset
+        state = np.random.get_state()
+        np.random.shuffle(X_clean)
+        np.random.set_state(state)
+        np.random.shuffle(y_raw)
 
-        train_data = X_clean[:num_train]
-        train_labels = y_raw[:num_train]
+        #Splitting the data - TODO - validation
+        percentile_60 = int(X_raw.shape[0] * 0.6)
+        percentile_80 = int(X_raw.shape[0] * 0.8)
 
-        test_data = X_clean[num_train:]
-        test_labels = y_raw[num_train:]
+        train_data = X_clean[:percentile_60]
+        train_labels = y_raw[:percentile_60]
+
+        test_data = X_clean[percentile_60:percentile_80]
+        test_labels = y_raw[percentile_60:percentile_80]
+
+        val_data = X_clean[percentile_80:]
+        val_labels = y_raw[percentile_80:]
+
+        print(percentile_60, percentile_80)
+        print(X_raw.shape)
+        print(train_labels.shape, test_labels.shape, val_labels.shape)
 
         # Convert from numpy to tensors for train data and corresponding labels
         # NB X_clean is already a numpy array
@@ -104,6 +121,9 @@ class ClaimClassifier():
         x_test = torch.from_numpy(test_data)
         y_test = torch.from_numpy(test_labels.to_numpy())
 
+        x_val = torch.from_numpy(val_data)
+        y_val = torch.from_numpy(val_labels.to_numpy())
+
         # Training dataset
         train_ds = TensorDataset(x_train, y_train)
         train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
@@ -112,13 +132,17 @@ class ClaimClassifier():
         test_ds = TensorDataset(x_test, y_test)
         test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
 
+        # Validations dataset
+        val_ds = TensorDataset(x_val, y_val)
+        val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False)       
+
+
         # Input and Output
         num_inputs = train_data.shape[1]
-        input_size = num_inputs
         output_size = 1
 
         # Create a model with hyperparameters
-        model = NeuralNet(input_size, hidden_size, output_size)
+        model = NeuralNet(num_inputs, hidden_size, output_size)
 
         # Weight positive samples higher
         pos_weight = torch.ones([batch_size])
@@ -129,11 +153,9 @@ class ClaimClassifier():
         optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 
         #TODO - to delete
-        accuracy_list = []
         epochs_list = []
         training_loss = []
         batch_loss = []
-        batch_accuracy = []
 
         for epoch in range(num_epochs):
             for xb, yb in train_dl:
@@ -142,9 +164,9 @@ class ClaimClassifier():
                 preds = model(xb.float())  # Why do I need to add float() here?
                 loss = criterion(preds.flatten(), yb.float())
 
-                # For calculating the average loss and accuracy
+                # TODO - delete this: For calculating the average loss and accuracy
                 batch_loss.append(loss.item())
-                batch_accuracy.append(model.accuracy(preds, yb, batch_size))
+                #batch_accuracy.append(model.accuracy(preds, yb, batch_size))
 
                 # Backward and optimize
                 loss.backward()
@@ -154,7 +176,7 @@ class ClaimClassifier():
             epochs_list.append(epoch)
             print(epoch)
             training_loss.append(mean(batch_loss))
-            accuracy_list.append(mean(batch_accuracy))
+            #accuracy_list.append(mean(batch_accuracy))
 
         plt.plot(epochs_list, training_loss, 'g', label='Training loss')
         # plt.plot(epochs_list, accuracy_for_one, 'b', label='Accuracy for 1')
@@ -191,26 +213,16 @@ class ClaimClassifier():
         X_clean = self._preprocessor(X_raw)
 
         # YOUR CODE HERE
-        #Convert to TensorDataset
-
 
         # Predict
-        all_outputs = []
-        all_labels = []
-        all_raw = []
-
-        # Convert from numpy to tensors for train data and corresponding labels
-        # NB X_clean is already a numpy array
-        #x_test = X_raw.to_numpy()
-        #x_test.astype(float)
+        #all_outputs = []
+        #all_labels = []
+        #all_raw = []
 
         x_test = torch.from_numpy(X_clean.astype(float))
 
-        # Training dataset
-        #train_ds = TensorDataset(x_train, y_train)
-        #train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
 
-        #Also need to normalise data
+        #TODO = also need to normalise data
 
         with torch.no_grad():
             outputs = self.trained_model(x_test.float())
@@ -222,28 +234,6 @@ class ClaimClassifier():
         print(predictions.flatten().numpy())
 
         return predictions.flatten().numpy() #PREDICTED CLASS LABELS (as probabilites)
-
-        #     for data, labels in test_dl:
-        #         outputs = self.trained_model(data.float())
-        #
-        #         # Merge outputs for auc roc score
-        #         flat_raw = outputs.flatten().tolist()
-        #         all_raw += flat_raw
-        #
-        #         # print(labels.float())
-        #         # merge all labels
-        #         flat_labels = labels.flatten().tolist()
-        #         all_labels += flat_labels
-        #
-        #         # merge all outputs
-        #         flat_outputs = F.sigmoid(outputs).round().flatten().tolist()
-        #         all_outputs += flat_outputs
-        #
-        #         # all_outputs.append(F.sigmoid(outputs).round().flatten().tolist())
-        #         # all_labels.append(labels.flatten().tolist())
-        #
-        # print(all_outputs)
-        # print(all_labels)
 
 
     def evaluate_architecture(self, probabilities, labels):
@@ -258,17 +248,18 @@ class ClaimClassifier():
 
         #Need to convert the probabilities into binary classification
         sigmoid = nn.Sigmoid()
-        predicitions = sigmoid(torch.from_numpy(probabilities)).round()
-
+        predictions = probabilities.round()
+        print(predictions)
 
         target_names = ['not claimed', 'claimed']
 
-        print(classification_report(labels, predicitions, target_names=target_names))
+        print(classification_report(labels, predictions, target_names=target_names))
 
-        confusion_matrix(labels, predicitions)
-        print(roc_auc_score(labels, probabilities))
+        confusion_matrix(labels, predictions)
+        print(f'auc: {roc_auc_score(labels, probabilities)}')
+        print(accuracy_score(labels, predictions))
+        print(labels, predictions)
 
-        pass
 
     def save_model(self):
         # Please alter this file appropriately to work in tandem with your load_model function below
@@ -292,6 +283,17 @@ def ClaimClassifierHyperParameterSearch():
     The function should return your optimised hyper-parameters. 
     """
 
+    #List of hyperparameters
+    params = {
+        'hidden_size': list(range(5, 500)),
+        'num_epochs': list(range(30, 200)),
+        'batch_size': list(range(10,100)),
+        'learning_rate': list(np.logspace(np.log10(0.005), np.log10(0.5), base = 10, num = 1000)),
+        'weighting': list(range(2,10))
+    }
+
+    
+
     return  # Return the chosen hyper parameters
 
 def main():
@@ -304,11 +306,9 @@ def main():
     data = df1.drop(columns=["claim_amount", "made_claim"])
     labels = df1["made_claim"]
 
-    #cc._preprocessor(data)
-
     cc.fit(data, labels)
     probabilities = cc.predict(data)
-    cc.evaluate_architecture(probabilities, labels)
+    cc.evaluate_architecture(probabilities, labels.to_numpy())
 
 if __name__== "__main__":
     main()
