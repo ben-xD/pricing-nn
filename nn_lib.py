@@ -179,6 +179,7 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+        
         self._W = xavier_init((self.n_in, self.n_out))
         self._b = xavier_init(self.n_out)
 
@@ -601,9 +602,11 @@ class Preprocessor(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
         
-        data = (data - self._min) / (self._max - self._min)
+        data_copy = data
 
-        return data
+        data_copy = (data_copy - self._min) / (self._max - self._min)
+
+        return data_copy
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -623,9 +626,11 @@ class Preprocessor(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
         
-        data = (data * (self._max - self._min)) + self._min
+        original_data = data
 
-        return data
+        original_data = (original_data * (self._max - self._min)) + self._min
+
+        return original_data
 
         #######################################################################
         #                       ** END OF YOUR CODE **
