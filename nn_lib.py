@@ -581,8 +581,8 @@ class Preprocessor(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
         
-        self._min = np.min(data, axis=0)
-        self._max = np.max(data, axis=0)
+        self._min = np.amin(data)
+        self._max = np.amax(data)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
