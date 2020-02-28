@@ -233,7 +233,7 @@ class ClaimClassifier():
         print(confusion_matrix(labels, predictions))
         auc_score = roc_auc_score(labels, probabilities)
         print(f'auc: {auc_score}')
-        # print("Accuracy: ", accuracy_score(labels, predictions))
+        print("Accuracy: ", accuracy_score(labels, predictions))
         # print("Labels: ", labels)
         # print("Predictions: ", predictions)
         return auc_score
@@ -282,23 +282,26 @@ def ClaimClassifierHyperParameterSearch():
     y = df1["made_claim"]
 
     # weighting_attempts = [0.5,2,4,8,8.5,9,9.5,10,10.5,11,12,14,15,20,50,100]
-    # sampling_size = 5
-    # weighting_auc_scores = [[None]*sampling_size for i in weighting_attempts]
+    weighting_attempts = [9]
+    sampling_size = 5
+    weighting_auc_scores = [[None]*sampling_size for i in weighting_attempts]
 
-    # for i, weighting in enumerate(weighting_attempts):
-    #     for take in range(sampling_size):
-    #         print("Weighting: ", weighting, ", sample: ", sampling_size)
-    #         model = claimClassifier.fit(X, y, weighting=weighting)
-    #         [test_data, test_labels] = claimClassifier.get_test_data()
-    #         # print("Test data: ",test_data)
-    #         probabilities = claimClassifier.predict(pd.DataFrame(test_data))
-    #         print("probabilities: ",probabilities)
-    #         auc_score = claimClassifier.evaluate_architecture(probabilities, test_labels)
-    #         weighting_auc_scores[i][take] = (auc_score)
+    claimClassifier = ClaimClassifier()
 
-    # print(weighting_auc_scores)
-    # auc_scores_per_weight = list(map(lambda x: sum(x)/len(x), weighting_auc_scores))
-    # plt.plot(weighting_attempts, auc_scores_per_weight)
+    for i, weighting in enumerate(weighting_attempts):
+        for take in range(sampling_size):
+            print("Weighting: ", weighting, ", sample: ", sampling_size)
+            model = claimClassifier.fit(X, y, weighting=weighting)
+            [test_data, test_labels] = claimClassifier.get_test_data()
+            # print("Test data: ",test_data)
+            probabilities = claimClassifier.predict(pd.DataFrame(test_data))
+            print("probabilities: ",probabilities)
+            auc_score = claimClassifier.evaluate_architecture(probabilities, test_labels)
+            weighting_auc_scores[i][take] = (auc_score)
+
+    print(weighting_auc_scores)
+    auc_scores_per_weight = list(map(lambda x: sum(x)/len(x), weighting_auc_scores))
+    plt.plot(weighting_attempts, auc_scores_per_weight)
 
     # find the highest weighting attempt, and set all future weighting to this.
 
@@ -325,8 +328,8 @@ def test_save_and_load():
     claimClassifier.evaluate_architecture(probabilities, test_labels)
 
 def main():
-    # ClaimClassifierHyperParameterSearch()
-    test_save_and_load()
+    ClaimClassifierHyperParameterSearch()
+    # test_save_and_load()
 
 if __name__ == "__main__":
     main()
