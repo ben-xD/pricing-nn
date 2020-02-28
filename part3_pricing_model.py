@@ -149,12 +149,12 @@ class PricingModel():
     def save_model(self):
         """Saves the class instance as a pickle file."""
         # =============================================================
-        with open('part3_pricing_model.pickle', 'wb') as target:
+        with open('part3_pricing_model_linear.pickle', 'wb') as target:
             pickle.dump(self, target)
 
 
 def load_model():
     # Please alter this section so that it works in tandem with the save_model method of your class
-    with open('part3_pricing_model.pickle', 'rb') as target:
+    with open('part3_pricing_model_linear.pickle', 'rb') as target:
         trained_model = pickle.load(target)
     return trained_model
