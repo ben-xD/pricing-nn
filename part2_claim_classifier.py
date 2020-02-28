@@ -11,7 +11,7 @@ import torch.utils.data as data
 from torch.utils.data import DataLoader, TensorDataset
 
 from NeuralNet import NeuralNet
-from statistics import mean  # TODO - can this be imported?
+from statistics import mean # This can be imported, its python
 import matplotlib.pyplot as plt
 
 # METRICS
@@ -48,9 +48,6 @@ class ClaimClassifier():
         ndarray
             A clean data set that is used for training and prediction.
         """
-        # YOUR CODE HERE
-        X_raw = X_raw.to_numpy()
-
         # Normalisation
         min_max_scaler = preprocessing.MinMaxScaler()
         X_scaled = min_max_scaler.fit_transform(X_raw)
@@ -61,14 +58,14 @@ class ClaimClassifier():
         # Return full dataset, normalised dataset without dropping the columns as numpy array
         return X_scaled
 
-    def fit(self, X_raw, y_raw, weighting=1, learning_rate=0.001, batch_size=20):
+    def fit(self, X_raw, y_raw, weighting=1, learning_rate=0.001, batch_size=20, num_epochs=20, hidden_size=50):
         """Classifier training function.
 
         Here you will implement the training function for your classifier.
 
         Parameters
         ----------
-        X_raw : ndarray
+        X_raw : ndarray (pandas DataFrame)
             An array, this is the raw data as downloaded
         y_raw : ndarray (optional)
             A one dimensional array, this is the binary target variable
@@ -78,27 +75,18 @@ class ClaimClassifier():
         self: (optional)
             an instance of the fitted model
         """
+        # Shuffle data
+        state = np.random.get_state()
+        X_raw = X_raw.sample(frac=1).reset_index(drop=True)
+        np.random.set_state(state)
+        y_raw = y_raw.sample(frac=1).reset_index(drop=True)
 
         # REMEMBER TO HAVE THE FOLLOWING LINE SOMEWHERE IN THE CODE
         X_clean = self._preprocessor(X_raw)
-        # YOUR CODE HERE
 
-        # TODO - save these somewhere else: Hyperparameters
-        hidden_size = 50  # model
-        num_epochs = 20  # fit / train
-        # batch_size = 10  # fit / train
-        # learning_rate = 0.001  # fit / train
-        # weighting = 8  # fit / train
-
-        # Shuffle dataset
-        state = np.random.get_state()
-        np.random.shuffle(X_clean)
-        np.random.set_state(state)
-        np.random.shuffle(y_raw)
-
-        # Splitting the data - TODO - validation
-        percentile_60 = int(X_raw.shape[0] * 0.6)
-        percentile_80 = int(X_raw.shape[0] * 0.8)
+        # Split data
+        percentile_60 = int(X_clean.shape[0] * 0.6)
+        percentile_80 = int(X_clean.shape[0] * 0.8)
 
         train_data = X_clean[:percentile_60]
         train_labels = y_raw[:percentile_60]
@@ -111,20 +99,16 @@ class ClaimClassifier():
         val_data = X_clean[percentile_80:]
         val_labels = y_raw[percentile_80:]
 
-        print(percentile_60, percentile_80)
-        print(X_raw.shape)
-        print(train_labels.shape, test_labels.shape, val_labels.shape)
-
         # Convert from numpy to tensors for train data and corresponding labels
         # NB X_clean is already a numpy array
-        x_train = torch.from_numpy(train_data)
-        y_train = torch.from_numpy(train_labels.to_numpy())
+        x_train = torch.tensor(train_data)
+        y_train = torch.tensor(train_labels)
 
-        x_test = torch.from_numpy(test_data)
-        y_test = torch.from_numpy(test_labels.to_numpy())
+        x_test = torch.tensor(test_data)
+        y_test = torch.tensor(test_labels.values)
 
-        x_val = torch.from_numpy(val_data)
-        y_val = torch.from_numpy(val_labels.to_numpy())
+        x_val = torch.tensor(val_data)
+        y_val = torch.tensor(val_labels.values)
 
         # Training dataset
         train_ds = TensorDataset(x_train, y_train)
@@ -194,7 +178,6 @@ class ClaimClassifier():
 
     def get_test_data(self):
       return [self.test_data, self.test_labels]
-        
 
     def predict(self, X_raw):
         """Classifier probability prediction function.
@@ -217,25 +200,19 @@ class ClaimClassifier():
         # REMEMBER TO HAVE THE FOLLOWING LINE SOMEWHERE IN THE CODE
         X_clean = self._preprocessor(X_raw)
 
-        # YOUR CODE HERE
-
         # Predict
         #all_outputs = []
         #all_labels = []
         #all_raw = []
 
-        x_test = torch.from_numpy(X_clean.astype(float))
-
-        # TODO = also need to normalise data
+        x_test = torch.tensor(X_clean)
 
         with torch.no_grad():
             outputs = self.trained_model(x_test.float())
-            # print(outputs)
-
-        # Convert the outputs to probabilities
-        sigmoid = nn.Sigmoid()
-        predictions = sigmoid(outputs)
-        # print(predictions.flatten().numpy())
+            # Convert the outputs to probabilities
+            predictions = F.sigmoid(outputs)
+            print("prediction shape: ", predictions.shape)
+            # print(predictions.flatten().numpy())
 
         return predictions.flatten().numpy()  # PREDICTED CLASS LABELS (as probabilites)
 
@@ -262,7 +239,8 @@ class ClaimClassifier():
         auc_score = roc_auc_score(labels, probabilities)
         print(f'auc: {auc_score}')
         print("Accuracy: ", accuracy_score(labels, predictions))
-        print("Labels: ", labels, "Predictions: ", predictions)
+        print("Labels: ", labels)
+        print("Predictions: ", predictions)
         return auc_score
 
     def save_model(self):
@@ -288,6 +266,9 @@ def ClaimClassifierHyperParameterSearch():
 
     The function should return your optimised hyper-parameters. 
     """
+    # try layer count (net depth)
+    # try different optimizer
+    # try #neurons per layer
 
     # List of hyperparameters
     # params = {
