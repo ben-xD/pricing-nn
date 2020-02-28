@@ -149,6 +149,7 @@ class PricingModel():
     def save_model(self):
         """Saves the class instance as a pickle file."""
         # =============================================================
+        # File name was changed, according to Marek's Piazza
         with open('part3_pricing_model_linear.pickle', 'wb') as target:
             pickle.dump(self, target)
 
