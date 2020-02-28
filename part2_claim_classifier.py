@@ -280,15 +280,6 @@ def ClaimClassifierHyperParameterSearch():
     df1 = pd.read_csv('part2_training_data.csv')
     X = df1.drop(columns=["claim_amount", "made_claim"])
     y = df1["made_claim"]
-    
-    # train here
-    # claimClassifier = ClaimClassifier()
-    # claimClassifier.save_model()
-    # restarted here
-    # claimClassifier = load_model()
-    # [test_data, test_labels] = claimClassifier.get_test_data()
-    # probabilities = claimClassifier.predict(pd.DataFrame(test_data))
-    # claimClassifier.evaluate_architecture(probabilities, test_labels)
 
     # weighting_attempts = [0.5,2,4,8,8.5,9,9.5,10,10.5,11,12,14,15,20,50,100]
     # sampling_size = 5
@@ -314,9 +305,28 @@ def ClaimClassifierHyperParameterSearch():
     return  # Return the chosen hyper parameters
 
 
-def main():
-    ClaimClassifierHyperParameterSearch()
+# We found the optimal hyperparameters using ClaimClassifierHyperParameterSearch
+# This is to avoid re-running the code again.
+def test_save_and_load():
+    df1 = pd.read_csv('part2_training_data.csv')
+    X = df1.drop(columns=["claim_amount", "made_claim"])
+    y = df1["made_claim"]
+  
+    # train here
+    claimClassifier = ClaimClassifier()
+    weighting = 9
+    claimClassifier.fit(X, y, weighting=weighting)
+    claimClassifier.save_model()
 
+    # tested here
+    claimClassifier = load_model()
+    [test_data, test_labels] = claimClassifier.get_test_data()
+    probabilities = claimClassifier.predict(pd.DataFrame(test_data))
+    claimClassifier.evaluate_architecture(probabilities, test_labels)
+
+def main():
+    # ClaimClassifierHyperParameterSearch()
+    test_save_and_load()
 
 if __name__ == "__main__":
     main()
