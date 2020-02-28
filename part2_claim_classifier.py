@@ -233,9 +233,9 @@ class ClaimClassifier():
         print(confusion_matrix(labels, predictions))
         auc_score = roc_auc_score(labels, probabilities)
         print(f'auc: {auc_score}')
-        print("Accuracy: ", accuracy_score(labels, predictions))
-        print("Labels: ", labels)
-        print("Predictions: ", predictions)
+        # print("Accuracy: ", accuracy_score(labels, predictions))
+        # print("Labels: ", labels)
+        # print("Predictions: ", predictions)
         return auc_score
 
     def save_model(self):
@@ -247,8 +247,7 @@ class ClaimClassifier():
 def load_model():
     # Please alter this section so that it works in tandem with the save_model method of your class
     with open('part2_claim_classifier.pickle', 'rb') as target:
-        trained_model = pickle.load(target)
-    return trained_model
+        return pickle.load(target)
 
 # ENSURE TO ADD IN WHATEVER INPUTS YOU DEEM NECESSARRY TO THIS FUNCTION
 
@@ -282,22 +281,36 @@ def ClaimClassifierHyperParameterSearch():
     X = df1.drop(columns=["claim_amount", "made_claim"])
     y = df1["made_claim"]
 
-    weighting_attempts = [9,9,9,9,9]
-    weighting_auc_scores = []
 
-    claimClassifier = ClaimClassifier()
+    # train here
+    # claimClassifier = ClaimClassifier()
+    # claimClassifier.save_model()
+    # restarted here
+    claimClassifier = load_model()
+    [test_data, test_labels] = claimClassifier.get_test_data()
+    probabilities = claimClassifier.predict(pd.DataFrame(test_data))
+    claimClassifier.evaluate_architecture(probabilities, test_labels)
 
-    for i, weighting in enumerate(weighting_attempts):
-        print("Weighting: ", weighting)
-        model = claimClassifier.fit(X, y, weighting=weighting)
-        [test_data, test_labels] = claimClassifier.get_test_data()
-        print("Test data: ",test_data)
-        probabilities = claimClassifier.predict(pd.DataFrame(test_data))
-        print("probabilities: ",probabilities)
-        auc_score = claimClassifier.evaluate_architecture(probabilities, test_labels)
-        weighting_auc_scores.append(auc_score)
+    # weighting_attempts = [0.5,2,4,8,8.5,9,9.5,10,10.5,11,12,14,15,20,50,100]
+    # sampling_size = 5
+    # weighting_auc_scores = [[None]*sampling_size for i in weighting_attempts]
 
-    print(weighting_auc_scores)
+    # for i, weighting in enumerate(weighting_attempts):
+    #     for take in range(sampling_size):
+    #         print("Weighting: ", weighting, ", sample: ", sampling_size)
+    #         model = claimClassifier.fit(X, y, weighting=weighting)
+    #         [test_data, test_labels] = claimClassifier.get_test_data()
+    #         # print("Test data: ",test_data)
+    #         probabilities = claimClassifier.predict(pd.DataFrame(test_data))
+    #         print("probabilities: ",probabilities)
+    #         auc_score = claimClassifier.evaluate_architecture(probabilities, test_labels)
+    #         weighting_auc_scores[i][take] = (auc_score)
+
+    # print(weighting_auc_scores)
+    # auc_scores_per_weight = list(map(lambda x: sum(x)/len(x), weighting_auc_scores))
+    # plt.plot(weighting_attempts, auc_scores_per_weight)
+
+    # find the highest weighting attempt, and set all future weighting to this.
 
     return  # Return the chosen hyper parameters
 
