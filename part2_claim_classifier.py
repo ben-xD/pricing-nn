@@ -280,16 +280,15 @@ def ClaimClassifierHyperParameterSearch():
     df1 = pd.read_csv('part2_training_data.csv')
     X = df1.drop(columns=["claim_amount", "made_claim"])
     y = df1["made_claim"]
-
-
+    
     # train here
     # claimClassifier = ClaimClassifier()
     # claimClassifier.save_model()
     # restarted here
-    claimClassifier = load_model()
-    [test_data, test_labels] = claimClassifier.get_test_data()
-    probabilities = claimClassifier.predict(pd.DataFrame(test_data))
-    claimClassifier.evaluate_architecture(probabilities, test_labels)
+    # claimClassifier = load_model()
+    # [test_data, test_labels] = claimClassifier.get_test_data()
+    # probabilities = claimClassifier.predict(pd.DataFrame(test_data))
+    # claimClassifier.evaluate_architecture(probabilities, test_labels)
 
     # weighting_attempts = [0.5,2,4,8,8.5,9,9.5,10,10.5,11,12,14,15,20,50,100]
     # sampling_size = 5
