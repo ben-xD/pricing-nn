@@ -48,15 +48,10 @@ class ClaimClassifier():
         ndarray
             A clean data set that is used for training and prediction.
         """
-        # Normalisation
-        min_max_scaler = preprocessing.MinMaxScaler()
-        X_scaled = min_max_scaler.fit_transform(X_raw)
-
-        # Save the min_max_scaler object to be used on testing data
-        self.scaler = min_max_scaler
-
-        # Return full dataset, normalised dataset without dropping the columns as numpy array
-        return X_scaled
+        if self.scaler == None:
+            self.scaler = preprocessing.MinMaxScaler()
+        # Normalisation (also saved for testing data later)
+        return self.scaler.fit_transform(X_raw)
 
     def fit(self, X_raw, y_raw, weighting=1, learning_rate=0.001, batch_size=20, num_epochs=20, hidden_size=50):
         """Classifier training function.
