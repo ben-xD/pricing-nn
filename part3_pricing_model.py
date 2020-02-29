@@ -200,6 +200,8 @@ class PricingModel():
 
                 # Backward and optimize
                 loss.backward()
+                clipping_value = 1
+                nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
                 optimizer.step()
                 optimizer.zero_grad()
 
@@ -375,7 +377,7 @@ def main():
     print("Main probabilities")
     print(probabilities)
 
-    # pricingModel.evaluate_architecture(probabilities, test_labels.to_numpy())
+    pricingModel.evaluate_architecture(probabilities, test_labels.to_numpy())
 
 if __name__ == "__main__":
     main()
