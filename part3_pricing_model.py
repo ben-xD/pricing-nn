@@ -81,7 +81,6 @@ class PricingModel():
         # =============================================================
         # YOUR CODE HERE
         lb = preprocessing.LabelBinarizer()
-        print("X_raw", type(X_raw))
         features = X_raw.drop(columns=['id_policy', 'pol_bonus', 'pol_sit_duration', 'pol_insee_code'], axis=1)
         temp = pd.get_dummies(features.pol_coverage)
         features = features.drop(columns=['pol_coverage'], axis=1)
@@ -104,9 +103,8 @@ class PricingModel():
         features = features.drop(columns=['vh_model', 'vh_make'])
         features.vh_type = lb.fit_transform(features.vh_type)
         features = features.drop(columns=["town_mean_altitude", "town_surface_area","population", "commune_code", "canton_code", "city_district_code", "regional_department_code"])
-        normalised_feature_array = preprocessing.MinMaxScaler().fit_transform(features)
-        
-        return normalised_feature_array
+        normalised_features = preprocessing.MinMaxScaler().fit_transform(features)
+        return normalised_features
 
 
     def fit(self, X_raw, y_raw, claims_raw, weighting=9, learning_rate=0.001, batch_size=20, num_epochs=10, hidden_size=50):
@@ -210,7 +208,7 @@ class PricingModel():
                 optimizer.zero_grad()
 
             epochs_list.append(epoch)
-            print(epoch)
+            # print(epoch)
             training_loss.append(mean(batch_loss))
             # accuracy_list.append(mean(batch_accuracy))
 
@@ -356,7 +354,13 @@ def main():
 
     probabilities = pricingModel.predict_claim_probability(test_set)
     predictions = pricingModel.predict_premium(test_set)
-    pricingModel.evaluate_architecture(probabilities, test_labels.to_numpy())
+    print("Main predictions")
+    print(predictions)
+    print("Main probabilities")
+    print(probabilities)
+    print("----- End main printing -----")
+    
+    # pricingModel.evaluate_architecture(probabilities, test_labels.to_numpy())
 
 if __name__ == "__main__":
     main()
