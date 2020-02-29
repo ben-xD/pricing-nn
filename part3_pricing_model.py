@@ -202,7 +202,7 @@ class PricingModel():
                 y = model(xb.float())
                 loss = criterion(y.flatten(), yb.float())
                 batch_loss.append(loss.item())
-                y_classified = (F.sigmoid(y).round()).view(-1)
+                y_classified = (torch.sigmoid(y).round()).view(-1)
                 batch_accuracy.append(accuracy_score(
                     yb, y_classified.detach().numpy()))
                 # print(loss)
@@ -263,7 +263,7 @@ class PricingModel():
         with torch.no_grad():
             outputs = self.trained_model(x_test.float())
             # Convert the outputs to probabilities
-            predictions = F.sigmoid(outputs)
+            predictions = torch.sigmoid(outputs)
             print("prediction shape: ", predictions.shape)
             # print(predictions.flatten().numpy())
 
@@ -303,7 +303,6 @@ class PricingModel():
         You can use external libraries such as scikit-learn for this
         if necessary.
         """
-        sigmoid = nn.Sigmoid()
         predictions = probabilities.round()
 
         target_names = ['not claimed', 'claimed']
