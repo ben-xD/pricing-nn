@@ -58,10 +58,10 @@ class PricingModel():
         # If you wish to use the classifier in part 2, you will need
         # to implement a predict_proba for it before use
         # =============================================================
-        self.base_classifier = None # ADD YOUR BASE CLASSIFIER HERE
-
+        self.base_classifier = None  # ADD YOUR BASE CLASSIFIER HERE
 
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY TO THE _preprocessor METHOD
+
     def _preprocessor(self, X_raw):
         """Data preprocessing function.
 
@@ -85,7 +85,8 @@ class PricingModel():
 
         # PART 3 Preprocessing
         lb = preprocessing.LabelBinarizer()
-        features = X_raw.drop(columns=['id_policy', 'pol_bonus', 'pol_sit_duration', 'pol_insee_code'], axis=1)
+        features = X_raw.drop(
+            columns=['id_policy', 'pol_bonus', 'pol_sit_duration', 'pol_insee_code'], axis=1)
         temp = pd.get_dummies(features.pol_coverage)
         features = features.drop(columns=['pol_coverage'], axis=1)
         features = pd.concat([features, temp], axis=1)
@@ -106,12 +107,12 @@ class PricingModel():
         features = features.drop(columns=['vh_fuel'])
         features = features.drop(columns=['vh_model', 'vh_make'])
         features.vh_type = lb.fit_transform(features.vh_type)
-        features = features.drop(columns=["town_mean_altitude", "town_surface_area","population", "commune_code", "canton_code", "city_district_code", "regional_department_code"])
+        features = features.drop(columns=["town_mean_altitude", "town_surface_area", "population",
+                                          "commune_code", "canton_code", "city_district_code", "regional_department_code"])
         normalised_features = preprocessing.MinMaxScaler().fit_transform(features)
         return normalised_features
 
-
-    def fit(self, X_raw, y_raw, claims_raw, weighting=9, learning_rate=0.001, batch_size=20, num_epochs=10, hidden_size=50):
+    def fit(self, X_raw, y_raw, claims_raw, weighting=9, learning_rate=0.001, batch_size=20, num_epochs=30, hidden_size=50):
         """Classifier training function.
 
         Here you will use the fit function for your classifier.
@@ -131,7 +132,7 @@ class PricingModel():
             an instance of the fitted model
         """
         nnz = np.where(claims_raw != 0)[0]
-        self.y_mean = np.mean(claims_raw[nnz]) #Average of all claims
+        self.y_mean = np.mean(claims_raw[nnz])  # Average of all claims
         # =============================================================
 
         # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITES
@@ -155,16 +156,24 @@ class PricingModel():
         split_index = int(X_clean.shape[0] * 0.8)
         train_set = X_clean[:split_index]
         train_labels = y_raw[:split_index]
-        val_data = X_clean[split_index:]
+        val_set = X_clean[split_index:]
         val_labels = y_raw[split_index:]
 
+        # Ensure train_labels is correct
+        print(type(train_labels))
+        print(train_labels.value_counts())
+
         # Training dataset
-        train_ds = TensorDataset(torch.tensor(train_set), torch.tensor(train_labels))
-        train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+        train_ds = TensorDataset(torch.tensor(
+            train_set), torch.tensor(train_labels))
+        train_loader = DataLoader(
+            train_ds, batch_size=batch_size, shuffle=True)
 
         # Validations dataset
-        val_ds = TensorDataset(torch.tensor(val_data), torch.tensor(val_labels.values))
-        val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+        validation_dataset = TensorDataset(torch.tensor(val_set),
+                                           torch.tensor(val_labels.values))
+        validation_loader = DataLoader(
+            validation_dataset, batch_size=batch_size, shuffle=False)
 
         # Input and Output
         num_inputs = train_set.shape[1]
@@ -183,31 +192,36 @@ class PricingModel():
 
         epochs_list = []
         training_loss = []
-        batch_loss = []
 
         for epoch in range(num_epochs):
-            for xb, yb in train_dl:
+            batch_loss = []
+            accuracy = []
+            batch_accuracy = []
+            for xb, yb in train_loader:
                 # Forwards pass
                 y = model(xb.float())
                 loss = criterion(y.flatten(), yb.float())
-
-                # TODO - delete this: For calculating the average loss and accuracy
                 batch_loss.append(loss.item())
+                y_classified = (F.sigmoid(y).round()).view(-1)
+                batch_accuracy.append(accuracy_score(
+                    yb, y_classified.detach().numpy()))
                 # print(loss)
-                # batch_accuracy.append(model.accuracy(y, yb, batch_size))
 
                 # Backward and optimize
                 loss.backward()
                 # Arbitrary value as per stack overflow
-                clipping_value = 1
                 # Prevent loss 'blowing up' https://stackoverflow.com/questions/33962226/common-causes-of-nans-during-training
-                nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
+                # clipping_value = 1
+                # nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
                 optimizer.step()
                 optimizer.zero_grad()
 
+            print(
+                f"Epoch: {epoch}, Batch loss: {mean(batch_loss)}, Accuracy: {mean(batch_accuracy)}")
+
             epochs_list.append(epoch)
             training_loss.append(mean(batch_loss))
-            # accuracy_list.append(mean(batch_accuracy))
+            accuracy.append(mean(batch_accuracy))
 
         plt.plot(epochs_list, training_loss, 'g', label='Training loss')
         plt.title('Training loss')
@@ -253,8 +267,8 @@ class PricingModel():
             print("prediction shape: ", predictions.shape)
             # print(predictions.flatten().numpy())
 
-        return predictions.flatten().numpy()  # return probabilities for the positive class (label 1)
-
+        # return probabilities for the positive class (label 1)
+        return predictions.flatten().numpy()
 
     def predict_premium(self, X_raw):
         """Predicts premiums based on the pricing model.
@@ -297,7 +311,6 @@ class PricingModel():
         print(f'predictions {predictions} of size {predictions.shape}')
         print(f'probabilities {probabilities} of size {probabilities.shape}')
 
-  
         print(classification_report(labels.astype(int), predictions.astype(int)))
 
         print(confusion_matrix(labels, predictions))
@@ -321,26 +334,27 @@ def load_model():
     with open('part3_pricing_model_linear.pickle', 'rb') as target:
         return pickle.load(target)
 
+
 def main():
     # ClaimClassifierHyperParameterSearch()
 
-    #Load pandas dataframe from csv & shuffle
+    # Load pandas dataframe from csv & shuffle
     df1 = pd.read_csv('part3_training_data.csv')
     df1 = df1.sample(frac=1).reset_index(drop=True)
     split_index = int(df1.shape[0] * 0.8)
-    
+
     # Split train & test
     train_data = df1.iloc[:split_index]
     train_set = train_data.drop(columns=["made_claim", "claim_amount"])
-    train_labels = train_data["claim_amount"]
+    train_labels = train_data["made_claim"]
     train_claims_raw = train_data["claim_amount"]
 
     test_data = df1.iloc[split_index:]
-    test_data.reset_index(drop=True,inplace=True )
+    test_data.reset_index(drop=True, inplace=True)
     test_set = test_data.drop(columns=["made_claim", "claim_amount"])
     test_labels = test_data["made_claim"]
     # test_claims_raw = test_data["claim_amount"]
-    
+
     # # In the form of part 2 (need to change _preprocessor to part2 form too). Tested to get auc: 0.6320862281258937
     # train_set = df1.filter([
     #     "drv_age1",
@@ -364,7 +378,7 @@ def main():
     # predictions = pricingModel.predict_premium(train_set)
     # pricingModel.evaluate_architecture(probabilities, train_labels.to_numpy())
     # # end if the form of part 2
-    
+
     pricingModel = PricingModel()
     pricingModel.fit(train_set, train_labels, train_claims_raw)
     pricingModel.save_model()
@@ -378,6 +392,7 @@ def main():
     print(probabilities)
 
     pricingModel.evaluate_architecture(probabilities, test_labels.to_numpy())
+
 
 if __name__ == "__main__":
     main()
