@@ -79,7 +79,11 @@ class PricingModel():
             A clean data set that is used for training and prediction.
         """
         # =============================================================
-        # YOUR CODE HERE
+        # # PART2 FORM
+        # normalised_X_raw = preprocessing.MinMaxScaler().fit_transform(X_raw)
+        # return normalised_X_raw
+
+        # PART 3 Preprocessing
         lb = preprocessing.LabelBinarizer()
         features = X_raw.drop(columns=['id_policy', 'pol_bonus', 'pol_sit_duration', 'pol_insee_code'], axis=1)
         temp = pd.get_dummies(features.pol_coverage)
@@ -148,16 +152,15 @@ class PricingModel():
         X_clean = self._preprocessor(X_raw)
 
         # Split train and validation
-        percentile_80 = int(X_clean.shape[0] * 0.8)
+        split_index = int(X_clean.shape[0] * 0.8)
 
-        train_set = X_clean[:percentile_80]
-        train_labels = y_raw[:percentile_80]
+        train_set = X_clean[:split_index]
+        train_labels = y_raw[:split_index]
 
-        val_data = X_clean[percentile_80:]
-        val_labels = y_raw[percentile_80:]
+        val_data = X_clean[split_index:]
+        val_labels = y_raw[split_index:]
 
         # Convert from numpy to tensors for train data and corresponding labels
-        # NB X_clean is already a numpy array
         x_train = torch.tensor(train_set)
         y_train = torch.tensor(train_labels)
 
@@ -242,6 +245,7 @@ class PricingModel():
         """
         # =============================================================
         # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
+        print("inside predict_claim_probability", type(X_raw))
         X_clean = self._preprocessor(X_raw)
 
         # Predict
@@ -296,13 +300,13 @@ class PricingModel():
         """
         sigmoid = nn.Sigmoid()
         predictions = probabilities.round()
-        #print(predictions)
 
         target_names = ['not claimed', 'claimed']
-        print(f'labels {labels}')
-        print(f'predictions {predictions}')
-        print(f'probabilities {probabilities}')
+        print(f'labels {labels} of size {labels.shape}')
+        print(f'predictions {predictions} of size {predictions.shape}')
+        print(f'probabilities {probabilities} of size {probabilities.shape}')
 
+  
         print(classification_report(labels.astype(int), predictions.astype(int)))
 
         print(confusion_matrix(labels, predictions))
@@ -329,10 +333,8 @@ def load_model():
 def main():
     # ClaimClassifierHyperParameterSearch()
 
-    #Load pandas dataframe from csv
+    #Load pandas dataframe from csv & shuffle
     df1 = pd.read_csv('part3_training_data.csv')
-
-    # Shuffle
     df1 = df1.sample(frac=1).reset_index(drop=True)
     split_index = int(df1.shape[0] * 0.8)
     
@@ -347,6 +349,30 @@ def main():
     test_labels = test_data["made_claim"]
     claims_raw = test_data["claim_amount"]
     
+    # # In the form of part 2 (need to change _preprocessor to part2 form too). Tested to get auc: 0.6320862281258937
+    # train_set = df1.filter([
+    #     "drv_age1",
+    #     "vh_age",
+    #     "vh_cyl",
+    #     "vh_din",
+    #     "pol_bonus",
+    #     "vh_sale_begin",
+    #     "vh_sale_end",
+    #     "vh_value",
+    #     "vh_speed",
+    # ])
+    # train_labels = df1["made_claim"]
+    # claims_raw = df1["claim_amount"]
+
+    # pricingModel = PricingModel()
+    # pricingModel.fit(train_set, train_labels, claims_raw)
+    # pricingModel.save_model()
+
+    # probabilities = pricingModel.predict_claim_probability(train_set)
+    # predictions = pricingModel.predict_premium(train_set)
+    # pricingModel.evaluate_architecture(probabilities, train_labels.to_numpy())
+    # # end if the form of part 2
+    
     pricingModel = PricingModel()
     pricingModel.fit(train_set, train_labels, claims_raw)
     pricingModel.save_model()
@@ -359,7 +385,7 @@ def main():
     print(probabilities)
     print("----- End main printing -----")
 
-    # pricingModel.evaluate_architecture(probabilities, test_labels.to_numpy())
+    pricingModel.evaluate_architecture(probabilities, test_labels.to_numpy())
 
 if __name__ == "__main__":
     main()
