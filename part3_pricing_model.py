@@ -80,12 +80,33 @@ class PricingModel():
         """
         # =============================================================
         # YOUR CODE HERE
-
-
-        if self.scaler == None:
-            self.scaler = preprocessing.MinMaxScaler()
-        # Normalisation (also saved for testing data later)
-        return self.scaler.fit_transform(X_raw)
+        lb = preprocessing.LabelBinarizer()
+        print("X_raw", type(X_raw))
+        features = X_raw.drop(columns=['id_policy', 'pol_bonus', 'pol_sit_duration', 'pol_insee_code'], axis=1)
+        temp = pd.get_dummies(features.pol_coverage)
+        features = features.drop(columns=['pol_coverage'], axis=1)
+        features = pd.concat([features, temp], axis=1)
+        temp = pd.get_dummies(features.pol_pay_freq)
+        features = features.drop(columns=['pol_pay_freq'], axis=1)
+        features = pd.concat([features, temp], axis=1)
+        features.pol_payd = lb.fit_transform(features.pol_payd)
+        temp = pd.get_dummies(features.pol_usage)
+        features = features.drop(columns=['pol_usage'], axis=1)
+        features = pd.concat([features, temp], axis=1)
+        features.drv_drv2 = lb.fit_transform(features.drv_drv2)
+        features = features.drop(columns=["drv_age2"])
+        features.drv_sex1 = lb.fit_transform(features.drv_sex1)
+        features = features.drop(columns=["drv_sex2"])
+        features = features.drop(columns=["drv_age_lic1", "drv_age_lic2"])
+        temp = pd.get_dummies(features.vh_fuel)
+        features = pd.concat([features, temp], axis=1)
+        features = features.drop(columns=['vh_fuel'])
+        features = features.drop(columns=['vh_model', 'vh_make'])
+        features.vh_type = lb.fit_transform(features.vh_type)
+        features = features.drop(columns=["town_mean_altitude", "town_surface_area","population", "commune_code", "canton_code", "city_district_code", "regional_department_code"])
+        normalised_feature_array = preprocessing.MinMaxScaler().fit_transform(features)
+        
+        return normalised_feature_array
 
 
     def fit(self, X_raw, y_raw, claims_raw, weighting=9, learning_rate=0.001, batch_size=20, num_epochs=10, hidden_size=50):
@@ -329,42 +350,13 @@ def main():
 
     #Load pandas dataframe from csv
     df1 = pd.read_csv('part3_training_data.csv')
-    #print(df1)
-    # X_raw = df1.drop(columns=[
-    #     "id_policy",
-    #     "claim_amount",
-    #     "made_claim",
-    #     "pol_coverage",
-    #     "pol_pay_freq",
-    #     "pol_payd",
-    #     "pol_usage",
-    #     "pol_insee_code",
-    #     "drv_drv2",
-    #     "drv_sex1",
-    #     "drv_sex2",
-    #     "vh_fuel",
-    #     "vh_make",
-    #     "vh_model",
-    #     "vh_type",
-    #     "regional_department_code"
-    #     ]
-    # )
-    X_raw = df1.filter([
-        "drv_age1",
-        "vh_age",
-        "vh_cyl",
-        "vh_din",
-        "pol_bonus",
-        "vh_sale_begin",
-        "vh_sale_end",
-        "vh_value",
-        "vh_speed",
-    ])
     y_raw = df1["made_claim"]
     claims_raw = df1["claim_amount"]
+    features = df1.drop(columns=["made_claim", "claim_amount"])
+    print(type(features))
 
     pricingModel = PricingModel()
-    pricingModel.fit(X_raw, y_raw, claims_raw)
+    pricingModel.fit(features, y_raw, claims_raw)
     pricingModel.save_model()
 
     [test_data, test_labels] = pricingModel.get_test_data()
