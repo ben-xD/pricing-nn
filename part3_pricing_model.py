@@ -1,7 +1,22 @@
+import pandas as pd
+from sklearn import preprocessing
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score, accuracy_score
 from sklearn.model_selection import train_test_split
 import pickle
 import numpy as np
+
+import torch
+from torch import nn, optim
+import torch.nn.functional as F
+import torch.utils.data as data
+from torch.utils.data import DataLoader, TensorDataset
+
+from statistics import mean
+import matplotlib.pyplot as plt
+
+
+from NeuralNet import NeuralNet
 
 
 def fit_and_calibrate_classifier(classifier, X, y):
@@ -26,6 +41,9 @@ class PricingModel():
         """
         self.y_mean = None
         self.calibrate = calibrate_probabilities
+
+        self.scaler = None
+        self.trained_model = None
         # =============================================================
         # READ ONLY IF WANTING TO CALIBRATE
         # Place your base classifier here
@@ -63,9 +81,14 @@ class PricingModel():
         # =============================================================
         # YOUR CODE HERE
 
-        return  # YOUR CLEAN DATA AS A NUMPY ARRAY
 
-    def fit(self, X_raw, y_raw, claims_raw):
+        if self.scaler == None:
+            self.scaler = preprocessing.MinMaxScaler()
+        # Normalisation (also saved for testing data later)
+        return self.scaler.fit_transform(X_raw)
+
+
+    def fit(self, X_raw, y_raw, claims_raw, weighting=9, learning_rate=0.001, batch_size=20, num_epochs=10, hidden_size=50):
         """Classifier training function.
 
         Here you will use the fit function for your classifier.
@@ -83,21 +106,117 @@ class PricingModel():
         -------
         self: (optional)
             an instance of the fitted model
-
         """
         nnz = np.where(claims_raw != 0)[0]
-        self.y_mean = np.mean(claims_raw[nnz])
+        self.y_mean = np.mean(claims_raw[nnz]) #Average of all claims
         # =============================================================
+
+
+        # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITES
+        # if self.calibrate:
+        #     self.base_classifier = fit_and_calibrate_classifier(
+        #         self.base_classifier, X_clean, y_raw)
+        # else:
+        #     self.base_classifier = self.base_classifier.fit(X_clean, y_raw)
+        # return self.base_classifier
+
+        # Shuffle data
+        state = np.random.get_state()
+        X_raw = X_raw.sample(frac=1).reset_index(drop=True)
+        np.random.set_state(state)
+        y_raw = y_raw.sample(frac=1).reset_index(drop=True)
+
         # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
         X_clean = self._preprocessor(X_raw)
 
-        # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITES
-        if self.calibrate:
-            self.base_classifier = fit_and_calibrate_classifier(
-                self.base_classifier, X_clean, y_raw)
-        else:
-            self.base_classifier = self.base_classifier.fit(X_clean, y_raw)
-        return self.base_classifier
+        # Split data
+        percentile_60 = int(X_clean.shape[0] * 0.6)
+        percentile_80 = int(X_clean.shape[0] * 0.8)
+
+        train_data = X_clean[:percentile_60]
+        train_labels = y_raw[:percentile_60]
+
+        test_data = X_clean[percentile_60:percentile_80]
+        test_labels = y_raw[percentile_60:percentile_80]
+        self.test_data = test_data
+        self.test_labels = test_labels
+
+        val_data = X_clean[percentile_80:]
+        val_labels = y_raw[percentile_80:]
+
+        # Convert from numpy to tensors for train data and corresponding labels
+        # NB X_clean is already a numpy array
+        x_train = torch.tensor(train_data)
+        y_train = torch.tensor(train_labels)
+
+        x_test = torch.tensor(test_data)
+        y_test = torch.tensor(test_labels.values)
+
+        x_val = torch.tensor(val_data)
+        y_val = torch.tensor(val_labels.values)
+
+        # Training dataset
+        train_ds = TensorDataset(x_train, y_train)
+        train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+
+        # Testing dataset
+        test_ds = TensorDataset(x_test, y_test)
+        test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+
+        # Validations dataset
+        val_ds = TensorDataset(x_val, y_val)
+        val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+
+        # Input and Output
+        num_inputs = train_data.shape[1]
+        output_size = 1
+
+        # Create a model with hyperparameters
+        model = NeuralNet(num_inputs, hidden_size, output_size)
+
+        # Weight positive samples higher
+        pos_weight = torch.ones([1])
+        pos_weight.fill_(weighting)
+
+        # Loss criterion and optimizer
+        criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+
+        epochs_list = []
+        training_loss = []
+        batch_loss = []
+
+        for epoch in range(num_epochs):
+            for xb, yb in train_dl:
+                # Forwards pass
+                preds = model(xb.float())  # Why do I need to add float() here?
+                loss = criterion(preds.flatten(), yb.float())
+
+                # TODO - delete this: For calculating the average loss and accuracy
+                batch_loss.append(loss.item())
+                #print(loss)
+                # batch_accuracy.append(model.accuracy(preds, yb, batch_size))
+
+                # Backward and optimize
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+
+            epochs_list.append(epoch)
+            print(epoch)
+            training_loss.append(mean(batch_loss))
+            # accuracy_list.append(mean(batch_accuracy))
+
+        #plt.plot(epochs_list, accuracy_for_one, 'b', label='Accuracy for 1')
+
+        #plt.plot(epochs_list, training_loss, 'g', label='Training loss')
+        #plt.title('Training loss')
+        #plt.xlabel('Epochs')
+        #plt.ylabel('Loss')
+        #plt.legend()
+        #plt.show()
+
+        self.trained_model = model
 
     def predict_claim_probability(self, X_raw):
         """Classifier probability prediction function.
@@ -118,10 +237,24 @@ class PricingModel():
         """
         # =============================================================
         # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
-        # X_clean = self._preprocessor(X_raw)
+        X_clean = self._preprocessor(X_raw)
 
+        # Predict
+        #all_outputs = []
+        #all_labels = []
+        #all_raw = []
 
-        return  # return probabilities for the positive class (label 1)
+        x_test = torch.tensor(X_clean)
+
+        with torch.no_grad():
+            outputs = self.trained_model(x_test.float())
+            # Convert the outputs to probabilities
+            predictions = F.sigmoid(outputs)
+            print("prediction shape: ", predictions.shape)
+            # print(predictions.flatten().numpy())
+
+        return predictions.flatten().numpy()  # return probabilities for the positive class (label 1)
+
 
     def predict_premium(self, X_raw):
         """Predicts premiums based on the pricing model.
@@ -146,6 +279,35 @@ class PricingModel():
 
         return self.predict_claim_probability(X_raw) * self.y_mean
 
+    #TODO - delete
+    def evaluate_architecture(self, probabilities, labels):
+        """Architecture evaluation utility.
+
+        Populate this function with evaluation utilities for your
+        neural network.
+
+        You can use external libraries such as scikit-learn for this
+        if necessary.
+        """
+        sigmoid = nn.Sigmoid()
+        predictions = probabilities.round()
+        #print(predictions)
+
+        target_names = ['not claimed', 'claimed']
+        print(f'labels {labels}')
+        print(f'predictions {predictions}')
+        print(f'probabilities {probabilities}')
+
+        print(classification_report(labels.astype(int), predictions.astype(int)))
+
+        print(confusion_matrix(labels, predictions))
+        auc_score = roc_auc_score(labels, probabilities)
+        print(f'auc: {auc_score}')
+        print("Accuracy: ", accuracy_score(labels, predictions))
+        #print("Labels: ", labels)
+        #print("Predictions: ", predictions)
+        return auc_score
+
     def save_model(self):
         """Saves the class instance as a pickle file."""
         # =============================================================
@@ -153,9 +315,65 @@ class PricingModel():
         with open('part3_pricing_model_linear.pickle', 'wb') as target:
             pickle.dump(self, target)
 
+    def get_test_data(self):
+        return [self.test_data, self.test_labels]
+
 
 def load_model():
     # Please alter this section so that it works in tandem with the save_model method of your class
     with open('part3_pricing_model_linear.pickle', 'rb') as target:
-        trained_model = pickle.load(target)
-    return trained_model
+        return pickle.load(target)
+
+def main():
+    # ClaimClassifierHyperParameterSearch()
+
+    #Load pandas dataframe from csv
+    df1 = pd.read_csv('part3_training_data.csv')
+    #print(df1)
+    # X_raw = df1.drop(columns=[
+    #     "id_policy",
+    #     "claim_amount",
+    #     "made_claim",
+    #     "pol_coverage",
+    #     "pol_pay_freq",
+    #     "pol_payd",
+    #     "pol_usage",
+    #     "pol_insee_code",
+    #     "drv_drv2",
+    #     "drv_sex1",
+    #     "drv_sex2",
+    #     "vh_fuel",
+    #     "vh_make",
+    #     "vh_model",
+    #     "vh_type",
+    #     "regional_department_code"
+    #     ]
+    # )
+    X_raw = df1.filter([
+        "drv_age1",
+        "vh_age",
+        "vh_cyl",
+        "vh_din",
+        "pol_bonus",
+        "vh_sale_begin",
+        "vh_sale_end",
+        "vh_value",
+        "vh_speed",
+    ])
+    y_raw = df1["made_claim"]
+    claims_raw = df1["claim_amount"]
+
+    pricingModel = PricingModel()
+    pricingModel.fit(X_raw, y_raw, claims_raw)
+    pricingModel.save_model()
+
+    [test_data, test_labels] = pricingModel.get_test_data()
+
+    probabilities = pricingModel.predict_claim_probability(test_data)
+
+    #predictions = pricingModel.predict_premium(test_data)
+
+    pricingModel.evaluate_architecture(probabilities, test_labels.to_numpy())
+
+if __name__ == "__main__":
+    main()
