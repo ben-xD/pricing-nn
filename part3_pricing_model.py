@@ -333,16 +333,15 @@ def main():
     df1 = pd.read_csv('part3_training_data.csv')
 
     # Shuffle
-    state = np.random.get_state()
     df1 = df1.sample(frac=1).reset_index(drop=True)
-    percentile_80 = int(df1.shape[0] * 0.8)
+    split_index = int(df1.shape[0] * 0.8)
     
     # Split train & test
-    train_data = df1.iloc[:percentile_80]
+    train_data = df1.iloc[:split_index]
     train_set = train_data.drop(columns=["made_claim", "claim_amount"])
     train_labels = train_data["claim_amount"]
 
-    test_data = df1.iloc[percentile_80:]
+    test_data = df1.iloc[split_index:]
     test_data.reset_index(drop=True,inplace=True )
     test_set = test_data.drop(columns=["made_claim", "claim_amount"])
     test_labels = test_data["made_claim"]
@@ -359,7 +358,7 @@ def main():
     print("Main probabilities")
     print(probabilities)
     print("----- End main printing -----")
-    
+
     # pricingModel.evaluate_architecture(probabilities, test_labels.to_numpy())
 
 if __name__ == "__main__":
