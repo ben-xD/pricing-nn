@@ -194,7 +194,8 @@ class PricingModel():
                 # TODO - delete this: For calculating the average loss and accuracy
                 batch_loss.append(loss.item())
                 # TODO fix this loss. It 'blows up' https://stackoverflow.com/questions/33962226/common-causes-of-nans-during-training
-                print(loss)
+                # print the loss to see it blowing up
+                # print(loss)
                 # batch_accuracy.append(model.accuracy(y, yb, batch_size))
 
                 # Backward and optimize
