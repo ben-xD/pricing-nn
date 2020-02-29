@@ -143,36 +143,27 @@ class PricingModel():
         # return self.base_classifier
 
         # Reshuffle data, we can't trust input if main() was used (e.g. LabTS?)
-        state = np.random.get_state()
-        X_raw = X_raw.sample(frac=1).reset_index(drop=True)
-        np.random.set_state(state)
-        y_raw = y_raw.sample(frac=1).reset_index(drop=True)
+        # state = np.random.get_state()
+        # X_raw = X_raw.sample(frac=1).reset_index(drop=True)
+        # np.random.set_state(state)
+        # y_raw = y_raw.sample(frac=1).reset_index(drop=True)
 
         # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
         X_clean = self._preprocessor(X_raw)
 
         # Split train and validation
         split_index = int(X_clean.shape[0] * 0.8)
-
         train_set = X_clean[:split_index]
         train_labels = y_raw[:split_index]
-
         val_data = X_clean[split_index:]
         val_labels = y_raw[split_index:]
 
-        # Convert from numpy to tensors for train data and corresponding labels
-        x_train = torch.tensor(train_set)
-        y_train = torch.tensor(train_labels)
-
-        x_val = torch.tensor(val_data)
-        y_val = torch.tensor(val_labels.values)
-
         # Training dataset
-        train_ds = TensorDataset(x_train, y_train)
+        train_ds = TensorDataset(torch.tensor(train_set), torch.tensor(train_labels))
         train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
 
         # Validations dataset
-        val_ds = TensorDataset(x_val, y_val)
+        val_ds = TensorDataset(torch.tensor(val_data), torch.tensor(val_labels.values))
         val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
 
         # Input and Output
@@ -197,13 +188,14 @@ class PricingModel():
         for epoch in range(num_epochs):
             for xb, yb in train_dl:
                 # Forwards pass
-                preds = model(xb.float())  # Why do I need to add float() here?
-                loss = criterion(preds.flatten(), yb.float())
+                y = model(xb.float())
+                loss = criterion(y.flatten(), yb.float())
 
                 # TODO - delete this: For calculating the average loss and accuracy
                 batch_loss.append(loss.item())
-                #print(loss)
-                # batch_accuracy.append(model.accuracy(preds, yb, batch_size))
+                # TODO fix this loss. It 'blows up' https://stackoverflow.com/questions/33962226/common-causes-of-nans-during-training
+                print(loss)
+                # batch_accuracy.append(model.accuracy(y, yb, batch_size))
 
                 # Backward and optimize
                 loss.backward()
@@ -211,18 +203,15 @@ class PricingModel():
                 optimizer.zero_grad()
 
             epochs_list.append(epoch)
-            # print(epoch)
             training_loss.append(mean(batch_loss))
             # accuracy_list.append(mean(batch_accuracy))
 
-        #plt.plot(epochs_list, accuracy_for_one, 'b', label='Accuracy for 1')
-
-        #plt.plot(epochs_list, training_loss, 'g', label='Training loss')
-        #plt.title('Training loss')
-        #plt.xlabel('Epochs')
-        #plt.ylabel('Loss')
-        #plt.legend()
-        #plt.show()
+        plt.plot(epochs_list, training_loss, 'g', label='Training loss')
+        plt.title('Training loss')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.show()
 
         self.trained_model = model
 
@@ -245,7 +234,6 @@ class PricingModel():
         """
         # =============================================================
         # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
-        print("inside predict_claim_probability", type(X_raw))
         X_clean = self._preprocessor(X_raw)
 
         # Predict
@@ -342,12 +330,13 @@ def main():
     train_data = df1.iloc[:split_index]
     train_set = train_data.drop(columns=["made_claim", "claim_amount"])
     train_labels = train_data["claim_amount"]
+    train_claims_raw = train_data["claim_amount"]
 
     test_data = df1.iloc[split_index:]
     test_data.reset_index(drop=True,inplace=True )
     test_set = test_data.drop(columns=["made_claim", "claim_amount"])
     test_labels = test_data["made_claim"]
-    claims_raw = test_data["claim_amount"]
+    # test_claims_raw = test_data["claim_amount"]
     
     # # In the form of part 2 (need to change _preprocessor to part2 form too). Tested to get auc: 0.6320862281258937
     # train_set = df1.filter([
@@ -374,18 +363,18 @@ def main():
     # # end if the form of part 2
     
     pricingModel = PricingModel()
-    pricingModel.fit(train_set, train_labels, claims_raw)
+    pricingModel.fit(train_set, train_labels, train_claims_raw)
     pricingModel.save_model()
 
-    probabilities = pricingModel.predict_claim_probability(test_set)
     predictions = pricingModel.predict_premium(test_set)
     print("Main predictions")
     print(predictions)
+
+    probabilities = pricingModel.predict_claim_probability(test_set)
     print("Main probabilities")
     print(probabilities)
-    print("----- End main printing -----")
 
-    pricingModel.evaluate_architecture(probabilities, test_labels.to_numpy())
+    # pricingModel.evaluate_architecture(probabilities, test_labels.to_numpy())
 
 if __name__ == "__main__":
     main()
