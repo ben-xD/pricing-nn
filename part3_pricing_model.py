@@ -132,7 +132,6 @@ class PricingModel():
         self.y_mean = np.mean(claims_raw[nnz]) #Average of all claims
         # =============================================================
 
-
         # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITES
         # if self.calibrate:
         #     self.base_classifier = fit_and_calibrate_classifier(
@@ -141,7 +140,7 @@ class PricingModel():
         #     self.base_classifier = self.base_classifier.fit(X_clean, y_raw)
         # return self.base_classifier
 
-        # Shuffle data
+        # Reshuffle data, we can't trust input if main() was used (e.g. LabTS?)
         state = np.random.get_state()
         X_raw = X_raw.sample(frac=1).reset_index(drop=True)
         np.random.set_state(state)
@@ -150,28 +149,19 @@ class PricingModel():
         # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
         X_clean = self._preprocessor(X_raw)
 
-        # Split data
-        percentile_60 = int(X_clean.shape[0] * 0.6)
+        # Split train and validation
         percentile_80 = int(X_clean.shape[0] * 0.8)
 
-        train_data = X_clean[:percentile_60]
-        train_labels = y_raw[:percentile_60]
-
-        test_data = X_clean[percentile_60:percentile_80]
-        test_labels = y_raw[percentile_60:percentile_80]
-        self.test_data = test_data
-        self.test_labels = test_labels
+        train_set = X_clean[:percentile_80]
+        train_labels = y_raw[:percentile_80]
 
         val_data = X_clean[percentile_80:]
         val_labels = y_raw[percentile_80:]
 
         # Convert from numpy to tensors for train data and corresponding labels
         # NB X_clean is already a numpy array
-        x_train = torch.tensor(train_data)
+        x_train = torch.tensor(train_set)
         y_train = torch.tensor(train_labels)
-
-        x_test = torch.tensor(test_data)
-        y_test = torch.tensor(test_labels.values)
 
         x_val = torch.tensor(val_data)
         y_val = torch.tensor(val_labels.values)
@@ -180,16 +170,12 @@ class PricingModel():
         train_ds = TensorDataset(x_train, y_train)
         train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
 
-        # Testing dataset
-        test_ds = TensorDataset(x_test, y_test)
-        test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
-
         # Validations dataset
         val_ds = TensorDataset(x_val, y_val)
         val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
 
         # Input and Output
-        num_inputs = train_data.shape[1]
+        num_inputs = train_set.shape[1]
         output_size = 1
 
         # Create a model with hyperparameters
@@ -336,9 +322,6 @@ class PricingModel():
         with open('part3_pricing_model_linear.pickle', 'wb') as target:
             pickle.dump(self, target)
 
-    def get_test_data(self):
-        return [self.test_data, self.test_labels]
-
 
 def load_model():
     # Please alter this section so that it works in tandem with the save_model method of your class
@@ -350,21 +333,29 @@ def main():
 
     #Load pandas dataframe from csv
     df1 = pd.read_csv('part3_training_data.csv')
-    y_raw = df1["made_claim"]
-    claims_raw = df1["claim_amount"]
-    features = df1.drop(columns=["made_claim", "claim_amount"])
-    print(type(features))
 
+    # Shuffle
+    state = np.random.get_state()
+    df1 = df1.sample(frac=1).reset_index(drop=True)
+    percentile_80 = int(df1.shape[0] * 0.8)
+    
+    # Split train & test
+    train_data = df1.iloc[:percentile_80]
+    train_set = train_data.drop(columns=["made_claim", "claim_amount"])
+    train_labels = train_data["claim_amount"]
+
+    test_data = df1.iloc[percentile_80:]
+    test_data.reset_index(drop=True,inplace=True )
+    test_set = test_data.drop(columns=["made_claim", "claim_amount"])
+    test_labels = test_data["made_claim"]
+    claims_raw = test_data["claim_amount"]
+    
     pricingModel = PricingModel()
-    pricingModel.fit(features, y_raw, claims_raw)
+    pricingModel.fit(train_set, train_labels, claims_raw)
     pricingModel.save_model()
 
-    [test_data, test_labels] = pricingModel.get_test_data()
-
-    probabilities = pricingModel.predict_claim_probability(test_data)
-
-    #predictions = pricingModel.predict_premium(test_data)
-
+    probabilities = pricingModel.predict_claim_probability(test_set)
+    predictions = pricingModel.predict_premium(test_set)
     pricingModel.evaluate_architecture(probabilities, test_labels.to_numpy())
 
 if __name__ == "__main__":
