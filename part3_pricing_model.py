@@ -79,9 +79,12 @@ class PricingModel():
             A clean data set that is used for training and prediction.
         """
         # =============================================================
-        # YOUR CODE HERE
+        # # PART2 FORM
+        # normalised_X_raw = preprocessing.MinMaxScaler().fit_transform(X_raw)
+        # return normalised_X_raw
+
+        # PART 3 Preprocessing
         lb = preprocessing.LabelBinarizer()
-        print("X_raw", type(X_raw))
         features = X_raw.drop(columns=['id_policy', 'pol_bonus', 'pol_sit_duration', 'pol_insee_code'], axis=1)
         temp = pd.get_dummies(features.pol_coverage)
         features = features.drop(columns=['pol_coverage'], axis=1)
@@ -104,9 +107,8 @@ class PricingModel():
         features = features.drop(columns=['vh_model', 'vh_make'])
         features.vh_type = lb.fit_transform(features.vh_type)
         features = features.drop(columns=["town_mean_altitude", "town_surface_area","population", "commune_code", "canton_code", "city_district_code", "regional_department_code"])
-        normalised_feature_array = preprocessing.MinMaxScaler().fit_transform(features)
-        
-        return normalised_feature_array
+        normalised_features = preprocessing.MinMaxScaler().fit_transform(features)
+        return normalised_features
 
 
     def fit(self, X_raw, y_raw, claims_raw, weighting=9, learning_rate=0.001, batch_size=20, num_epochs=10, hidden_size=50):
@@ -132,7 +134,6 @@ class PricingModel():
         self.y_mean = np.mean(claims_raw[nnz]) #Average of all claims
         # =============================================================
 
-
         # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITES
         # if self.calibrate:
         #     self.base_classifier = fit_and_calibrate_classifier(
@@ -141,55 +142,32 @@ class PricingModel():
         #     self.base_classifier = self.base_classifier.fit(X_clean, y_raw)
         # return self.base_classifier
 
-        # Shuffle data
-        state = np.random.get_state()
-        X_raw = X_raw.sample(frac=1).reset_index(drop=True)
-        np.random.set_state(state)
-        y_raw = y_raw.sample(frac=1).reset_index(drop=True)
+        # Reshuffle data, we can't trust input if main() was used (e.g. LabTS?)
+        # state = np.random.get_state()
+        # X_raw = X_raw.sample(frac=1).reset_index(drop=True)
+        # np.random.set_state(state)
+        # y_raw = y_raw.sample(frac=1).reset_index(drop=True)
 
         # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
         X_clean = self._preprocessor(X_raw)
 
-        # Split data
-        percentile_60 = int(X_clean.shape[0] * 0.6)
-        percentile_80 = int(X_clean.shape[0] * 0.8)
-
-        train_data = X_clean[:percentile_60]
-        train_labels = y_raw[:percentile_60]
-
-        test_data = X_clean[percentile_60:percentile_80]
-        test_labels = y_raw[percentile_60:percentile_80]
-        self.test_data = test_data
-        self.test_labels = test_labels
-
-        val_data = X_clean[percentile_80:]
-        val_labels = y_raw[percentile_80:]
-
-        # Convert from numpy to tensors for train data and corresponding labels
-        # NB X_clean is already a numpy array
-        x_train = torch.tensor(train_data)
-        y_train = torch.tensor(train_labels)
-
-        x_test = torch.tensor(test_data)
-        y_test = torch.tensor(test_labels.values)
-
-        x_val = torch.tensor(val_data)
-        y_val = torch.tensor(val_labels.values)
+        # Split train and validation
+        split_index = int(X_clean.shape[0] * 0.8)
+        train_set = X_clean[:split_index]
+        train_labels = y_raw[:split_index]
+        val_data = X_clean[split_index:]
+        val_labels = y_raw[split_index:]
 
         # Training dataset
-        train_ds = TensorDataset(x_train, y_train)
+        train_ds = TensorDataset(torch.tensor(train_set), torch.tensor(train_labels))
         train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
 
-        # Testing dataset
-        test_ds = TensorDataset(x_test, y_test)
-        test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
-
         # Validations dataset
-        val_ds = TensorDataset(x_val, y_val)
+        val_ds = TensorDataset(torch.tensor(val_data), torch.tensor(val_labels.values))
         val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
 
         # Input and Output
-        num_inputs = train_data.shape[1]
+        num_inputs = train_set.shape[1]
         output_size = 1
 
         # Create a model with hyperparameters
@@ -210,13 +188,15 @@ class PricingModel():
         for epoch in range(num_epochs):
             for xb, yb in train_dl:
                 # Forwards pass
-                preds = model(xb.float())  # Why do I need to add float() here?
-                loss = criterion(preds.flatten(), yb.float())
+                y = model(xb.float())
+                loss = criterion(y.flatten(), yb.float())
 
                 # TODO - delete this: For calculating the average loss and accuracy
                 batch_loss.append(loss.item())
-                #print(loss)
-                # batch_accuracy.append(model.accuracy(preds, yb, batch_size))
+                # TODO fix this loss. It 'blows up' https://stackoverflow.com/questions/33962226/common-causes-of-nans-during-training
+                # print the loss to see it blowing up
+                # print(loss)
+                # batch_accuracy.append(model.accuracy(y, yb, batch_size))
 
                 # Backward and optimize
                 loss.backward()
@@ -224,18 +204,15 @@ class PricingModel():
                 optimizer.zero_grad()
 
             epochs_list.append(epoch)
-            print(epoch)
             training_loss.append(mean(batch_loss))
             # accuracy_list.append(mean(batch_accuracy))
 
-        #plt.plot(epochs_list, accuracy_for_one, 'b', label='Accuracy for 1')
-
-        #plt.plot(epochs_list, training_loss, 'g', label='Training loss')
-        #plt.title('Training loss')
-        #plt.xlabel('Epochs')
-        #plt.ylabel('Loss')
-        #plt.legend()
-        #plt.show()
+        plt.plot(epochs_list, training_loss, 'g', label='Training loss')
+        plt.title('Training loss')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.show()
 
         self.trained_model = model
 
@@ -312,13 +289,13 @@ class PricingModel():
         """
         sigmoid = nn.Sigmoid()
         predictions = probabilities.round()
-        #print(predictions)
 
         target_names = ['not claimed', 'claimed']
-        print(f'labels {labels}')
-        print(f'predictions {predictions}')
-        print(f'probabilities {probabilities}')
+        print(f'labels {labels} of size {labels.shape}')
+        print(f'predictions {predictions} of size {predictions.shape}')
+        print(f'probabilities {probabilities} of size {probabilities.shape}')
 
+  
         print(classification_report(labels.astype(int), predictions.astype(int)))
 
         print(confusion_matrix(labels, predictions))
@@ -336,9 +313,6 @@ class PricingModel():
         with open('part3_pricing_model_linear.pickle', 'wb') as target:
             pickle.dump(self, target)
 
-    def get_test_data(self):
-        return [self.test_data, self.test_labels]
-
 
 def load_model():
     # Please alter this section so that it works in tandem with the save_model method of your class
@@ -348,24 +322,60 @@ def load_model():
 def main():
     # ClaimClassifierHyperParameterSearch()
 
-    #Load pandas dataframe from csv
+    #Load pandas dataframe from csv & shuffle
     df1 = pd.read_csv('part3_training_data.csv')
-    y_raw = df1["made_claim"]
-    claims_raw = df1["claim_amount"]
-    features = df1.drop(columns=["made_claim", "claim_amount"])
-    print(type(features))
+    df1 = df1.sample(frac=1).reset_index(drop=True)
+    split_index = int(df1.shape[0] * 0.8)
+    
+    # Split train & test
+    train_data = df1.iloc[:split_index]
+    train_set = train_data.drop(columns=["made_claim", "claim_amount"])
+    train_labels = train_data["claim_amount"]
+    train_claims_raw = train_data["claim_amount"]
 
+    test_data = df1.iloc[split_index:]
+    test_data.reset_index(drop=True,inplace=True )
+    test_set = test_data.drop(columns=["made_claim", "claim_amount"])
+    test_labels = test_data["made_claim"]
+    # test_claims_raw = test_data["claim_amount"]
+    
+    # # In the form of part 2 (need to change _preprocessor to part2 form too). Tested to get auc: 0.6320862281258937
+    # train_set = df1.filter([
+    #     "drv_age1",
+    #     "vh_age",
+    #     "vh_cyl",
+    #     "vh_din",
+    #     "pol_bonus",
+    #     "vh_sale_begin",
+    #     "vh_sale_end",
+    #     "vh_value",
+    #     "vh_speed",
+    # ])
+    # train_labels = df1["made_claim"]
+    # claims_raw = df1["claim_amount"]
+
+    # pricingModel = PricingModel()
+    # pricingModel.fit(train_set, train_labels, claims_raw)
+    # pricingModel.save_model()
+
+    # probabilities = pricingModel.predict_claim_probability(train_set)
+    # predictions = pricingModel.predict_premium(train_set)
+    # pricingModel.evaluate_architecture(probabilities, train_labels.to_numpy())
+    # # end if the form of part 2
+    
     pricingModel = PricingModel()
-    pricingModel.fit(features, y_raw, claims_raw)
+    pricingModel.fit(train_set, train_labels, train_claims_raw)
     pricingModel.save_model()
 
-    [test_data, test_labels] = pricingModel.get_test_data()
+    predictions = pricingModel.predict_premium(test_set)
+    print("Main predictions")
+    print(predictions)
 
-    probabilities = pricingModel.predict_claim_probability(test_data)
+    probabilities = pricingModel.predict_claim_probability(test_set)
+    print("Main probabilities")
+    print(probabilities)
 
-    #predictions = pricingModel.predict_premium(test_data)
-
-    pricingModel.evaluate_architecture(probabilities, test_labels.to_numpy())
+    # pricingModel.evaluate_architecture(probabilities, test_labels.to_numpy())
 
 if __name__ == "__main__":
     main()
