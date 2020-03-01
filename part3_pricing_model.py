@@ -334,7 +334,7 @@ class PricingModel():
         # print("Predict premium", type(X_raw), X_raw.shape)
         #print(f'premium: {premium}')
         #return premium
-        return self.predict_claim_probability(X_raw) * self.y_mean * 0.5
+        return self.predict_claim_probability(X_raw) * self.y_mean * 0.4
         
 
     #TODO - delete
