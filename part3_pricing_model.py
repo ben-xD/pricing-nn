@@ -291,6 +291,7 @@ class PricingModel():
         # REMEMBER TO INCLUDE ANY PRICING STRATEGY HERE.
         # For example you could scale all your prices down by a factor
 
+        print("Predict premium", type(X_raw), X_raw.shape)
         return self.predict_claim_probability(X_raw) * self.y_mean
 
     #TODO - delete
