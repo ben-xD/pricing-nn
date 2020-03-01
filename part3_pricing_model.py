@@ -62,7 +62,7 @@ class PricingModel():
 
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY TO THE _preprocessor METHOD
 
-    def _preprocessor(self, X_raw):
+    def _preprocessor(self, X_raw, train=False):
         """Data preprocessing function.
 
         This function prepares the features of the data for training,
@@ -83,32 +83,46 @@ class PricingModel():
         # normalised_X_raw = preprocessing.MinMaxScaler().fit_transform(X_raw)
         # return normalised_X_raw
 
-        print(list(X_raw))
+        features = X_raw
+
+        if train is True:
+            # Create and store 5 binarizers
+            self.lb = preprocessing.LabelBinarizer()
+            self.binarizer = self.lb.fit
+            self.pol_payd_binarizer = preprocessing.LabelBinarizer().fit(features.drv_drv2)
+            self.drv_drv2_binarizer = preprocessing.LabelBinarizer().fit(features.pol_payd)
+            self.drv_sex1_binarizer = preprocessing.LabelBinarizer().fit(features.drv_sex1)
+            self.vh_type_binarizer = preprocessing.LabelBinarizer().fit(features.vh_type)
+
+        print(list(features))
         # PART 3 Preprocessing
-        lb = preprocessing.LabelBinarizer()
-        features = X_raw.drop(
-            columns=['id_policy', 'pol_bonus', 'pol_sit_duration', 'pol_insee_code'], axis=1)
         temp = pd.get_dummies(features.pol_coverage)
-        features = features.drop(columns=['pol_coverage'], axis=1)
         features = pd.concat([features, temp], axis=1)
         temp = pd.get_dummies(features.pol_pay_freq)
-        features = features.drop(columns=['pol_pay_freq'], axis=1)
         features = pd.concat([features, temp], axis=1)
-        features.pol_payd = lb.fit_transform(features.pol_payd)
+        features.pol_payd = self.pol_payd_binarizer.transform(
+            features.pol_payd)
         temp = pd.get_dummies(features.pol_usage)
-        features = features.drop(columns=['pol_usage'], axis=1)
         features = pd.concat([features, temp], axis=1)
-        features.drv_drv2 = lb.fit_transform(features.drv_drv2)
-        features = features.drop(columns=["drv_age2"])
-        features.drv_sex1 = lb.fit_transform(features.drv_sex1)
-        features = features.drop(columns=["drv_sex2"])
-        features = features.drop(columns=["drv_age_lic1", "drv_age_lic2"])
+        features.drv_drv2 = self.drv_drv2_binarizer.transform(
+            features.drv_drv2)
+        features.drv_sex1 = self.drv_sex1_binarizer.transform(
+            features.drv_sex1)
         temp = pd.get_dummies(features.vh_fuel)
         features = pd.concat([features, temp], axis=1)
+        features.vh_type = self.vh_type_binarizer.transform(features.vh_type)
+        features = features.drop(
+            columns=['id_policy', 'pol_bonus', 'pol_sit_duration', 'pol_insee_code'], axis=1)
+        features = features.drop(columns=['pol_coverage'], axis=1)
+        features = features.drop(columns=['pol_pay_freq'], axis=1)
+        features = features.drop(columns=['pol_usage'], axis=1)
+        features = features.drop(columns=["drv_age2"])
+        features = features.drop(columns=["drv_sex2"])
+        features = features.drop(columns=["drv_age_lic1", "drv_age_lic2"])
         features = features.drop(columns=['vh_fuel', 'vh_model', 'vh_make'])
-        features.vh_type = lb.fit_transform(features.vh_type)
         features = features.drop(columns=["town_mean_altitude", "town_surface_area", "population",
                                           "commune_code", "canton_code", "city_district_code", "regional_department_code"])
+        print(features)
         normalised_features = preprocessing.MinMaxScaler().fit_transform(features)
         return normalised_features
 
@@ -150,7 +164,7 @@ class PricingModel():
         # y_raw = y_raw.sample(frac=1).reset_index(drop=True)
 
         # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
-        X_clean = self._preprocessor(X_raw)
+        X_clean = self._preprocessor(X_raw, train=True)
 
         # Split train and validation
         split_index = int(X_clean.shape[0] * 0.8)
