@@ -94,7 +94,6 @@ class PricingModel():
             self.drv_sex1_binarizer = preprocessing.LabelBinarizer().fit(features.drv_sex1)
             self.vh_type_binarizer = preprocessing.LabelBinarizer().fit(features.vh_type)
 
-        print(list(features))
         # PART 3 Preprocessing
         temp = pd.get_dummies(features.pol_coverage)
         features = pd.concat([features, temp], axis=1)
@@ -122,7 +121,7 @@ class PricingModel():
         features = features.drop(columns=['vh_fuel', 'vh_model', 'vh_make'])
         features = features.drop(columns=["town_mean_altitude", "town_surface_area", "population",
                                           "commune_code", "canton_code", "city_district_code", "regional_department_code"])
-        print(features)
+        print(list(features))
         normalised_features = preprocessing.MinMaxScaler().fit_transform(features)
         return normalised_features
 
@@ -173,9 +172,9 @@ class PricingModel():
         val_set = X_clean[split_index:]
         val_labels = y_raw[split_index:]
 
-        # Ensure train_labels is correct
-        print(type(train_labels))
-        print(train_labels.value_counts())
+        # # Ensure train_labels is correct
+        # print(type(train_labels))
+        # print(train_labels.value_counts())
 
         # Training dataset
         train_ds = TensorDataset(torch.tensor(
