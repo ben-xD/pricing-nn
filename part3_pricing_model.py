@@ -83,6 +83,7 @@ class PricingModel():
         # normalised_X_raw = preprocessing.MinMaxScaler().fit_transform(X_raw)
         # return normalised_X_raw
 
+        print(list(X_raw))
         # PART 3 Preprocessing
         lb = preprocessing.LabelBinarizer()
         features = X_raw.drop(
@@ -104,8 +105,7 @@ class PricingModel():
         features = features.drop(columns=["drv_age_lic1", "drv_age_lic2"])
         temp = pd.get_dummies(features.vh_fuel)
         features = pd.concat([features, temp], axis=1)
-        features = features.drop(columns=['vh_fuel'])
-        features = features.drop(columns=['vh_model', 'vh_make'])
+        features = features.drop(columns=['vh_fuel', 'vh_model', 'vh_make'])
         features.vh_type = lb.fit_transform(features.vh_type)
         features = features.drop(columns=["town_mean_altitude", "town_surface_area", "population",
                                           "commune_code", "canton_code", "city_district_code", "regional_department_code"])
@@ -266,7 +266,6 @@ class PricingModel():
             print("Outputs: ", outputs.shape)
             # Convert the outputs to probabilities
             predictions = torch.sigmoid(outputs)
-            print("prediction shape: ", predictions.shape)
             # print(predictions.flatten().numpy())
 
         # return probabilities for the positive class (label 1)
