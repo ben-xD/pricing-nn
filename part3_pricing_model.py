@@ -261,7 +261,9 @@ class PricingModel():
         x_test = torch.tensor(X_clean)
 
         with torch.no_grad():
+            print("Input shape", x_test.shape, self.trained_model)
             outputs = self.trained_model(x_test.float())
+            print("Outputs: ", outputs.shape)
             # Convert the outputs to probabilities
             predictions = torch.sigmoid(outputs)
             print("prediction shape: ", predictions.shape)
