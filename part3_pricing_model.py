@@ -85,30 +85,59 @@ class PricingModel():
 
         features = X_raw
 
+        pol_coverage_categories = ["Maxi", "Median1", "Median2", "Mini"]
+        pol_pay_frequency_categories = [
+            "Biannual", "Monthly", "Quarterly", "Yearly"]
+        pol_usage_categories = ["AllTrips",
+                                "Professional", "Retired", "WorkPrivate"]
+        vh_fuel_categories = ["Diesel", "Gasoline", "Hybrid"]
+
         if train is True:
-            # Create and store 5 binarizers
-            self.lb = preprocessing.LabelBinarizer()
-            self.binarizer = self.lb.fit
+            # Create and store one hot encoding binarizers
+            self.pol_coverage_binarizer = preprocessing.LabelBinarizer().fit(
+                pol_coverage_categories)
+            self.pol_pay_frequency_binarizer = preprocessing.LabelBinarizer().fit(
+                pol_pay_frequency_categories)
+            self.pol_usage_binarizer = preprocessing.LabelBinarizer().fit(
+                pol_pay_frequency_categories)
+            self.vh_fuel_binarizer = preprocessing.LabelBinarizer().fit(
+                vh_fuel_categories)
+
+            # Create and store binary binarizers
             self.pol_payd_binarizer = preprocessing.LabelBinarizer().fit(features.drv_drv2)
             self.drv_drv2_binarizer = preprocessing.LabelBinarizer().fit(features.pol_payd)
             self.drv_sex1_binarizer = preprocessing.LabelBinarizer().fit(features.drv_sex1)
             self.vh_type_binarizer = preprocessing.LabelBinarizer().fit(features.vh_type)
 
         # PART 3 Preprocessing
-        temp = pd.get_dummies(features.pol_coverage)
-        features = pd.concat([features, temp], axis=1)
-        temp = pd.get_dummies(features.pol_pay_freq)
-        features = pd.concat([features, temp], axis=1)
+        temp = pd.DataFrame(
+            self.pol_coverage_binarizer.transform(features.pol_coverage))
+        for i, category in enumerate(pol_coverage_categories):
+            features[category] = temp[i]
+
+        temp = pd.DataFrame(
+            self.pol_pay_frequency_binarizer.transform(features.pol_pay_freq))
+        for i, category in enumerate(pol_pay_frequency_categories):
+            features[category] = temp[i]
+
         features.pol_payd = self.pol_payd_binarizer.transform(
             features.pol_payd)
-        temp = pd.get_dummies(features.pol_usage)
-        features = pd.concat([features, temp], axis=1)
+
+        temp = pd.DataFrame(
+            self.pol_usage_binarizer.transform(features.pol_usage))
+        for i, category in enumerate(pol_usage_categories):
+            features[category] = temp[i]
+
         features.drv_drv2 = self.drv_drv2_binarizer.transform(
             features.drv_drv2)
         features.drv_sex1 = self.drv_sex1_binarizer.transform(
             features.drv_sex1)
-        temp = pd.get_dummies(features.vh_fuel)
-        features = pd.concat([features, temp], axis=1)
+
+        temp = pd.DataFrame(
+            self.vh_fuel_binarizer.transform(features.vh_fuel))
+        for i, category in enumerate(vh_fuel_categories):
+            features[category] = temp[i]
+
         features.vh_type = self.vh_type_binarizer.transform(features.vh_type)
         features = features.drop(
             columns=['id_policy', 'pol_bonus', 'pol_sit_duration', 'pol_insee_code'], axis=1)
