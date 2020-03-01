@@ -210,7 +210,7 @@ class PricingModel():
         train_loader = DataLoader(
             train_ds, batch_size=batch_size, shuffle=True)
 
-        # Validations dataset
+        # Validations dataset. Tune your hyperparams with this.
         validation_dataset = TensorDataset(torch.tensor(val_set),
                                            torch.tensor(val_labels.values))
         validation_loader = DataLoader(
@@ -383,7 +383,7 @@ def main():
     df1 = df1.sample(frac=1).reset_index(drop=True)
     split_index = int(df1.shape[0] * 0.8)
 
-    # Split train & test
+    # Split train & test. Final evaluation only on test_set. NOT hyperparameter searching
     train_data = df1.iloc[:split_index]
     train_set = train_data.drop(columns=["made_claim", "claim_amount"])
     train_labels = train_data["made_claim"]
