@@ -332,7 +332,7 @@ class PricingModel():
         # For example you could scale all your prices down by a factor
 
         # print("Predict premium", type(X_raw), X_raw.shape)
-        return self.predict_claim_probability(X_raw) * self.y_mean * 0.2
+        return self.predict_claim_probability(X_raw) * self.y_mean * 0.01
 
     #TODO - delete
     def evaluate_architecture(self, probabilities, labels):
