@@ -264,12 +264,12 @@ class PricingModel():
             training_loss.append(mean(batch_loss))
             accuracy.append(mean(batch_accuracy))
 
-        plt.plot(epochs_list, training_loss, 'g', label='Training loss')
-        plt.title('Training loss')
-        plt.xlabel('Epochs')
-        plt.ylabel('Loss')
-        plt.legend()
-        plt.show()
+        #plt.plot(epochs_list, training_loss, 'g', label='Training loss')
+        #plt.title('Training loss')
+        #plt.xlabel('Epochs')
+        #plt.ylabel('Loss')
+        #plt.legend()
+        #plt.show()
 
         self.trained_model = model
 
