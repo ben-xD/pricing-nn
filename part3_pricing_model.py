@@ -150,7 +150,6 @@ class PricingModel():
         features = features.drop(columns=['vh_fuel', 'vh_model', 'vh_make'])
         features = features.drop(columns=["town_mean_altitude", "town_surface_area", "population",
                                           "commune_code", "canton_code", "city_district_code", "regional_department_code"])
-        print(list(features))
         normalised_features = preprocessing.MinMaxScaler().fit_transform(features)
         return normalised_features
 
@@ -303,9 +302,7 @@ class PricingModel():
         x_test = torch.tensor(X_clean)
 
         with torch.no_grad():
-            print("Input shape", x_test.shape, self.trained_model)
             outputs = self.trained_model(x_test.float())
-            print("Outputs: ", outputs.shape)
             # Convert the outputs to probabilities
             predictions = torch.sigmoid(outputs)
             # print(predictions.flatten().numpy())
@@ -334,7 +331,7 @@ class PricingModel():
         # REMEMBER TO INCLUDE ANY PRICING STRATEGY HERE.
         # For example you could scale all your prices down by a factor
 
-        print("Predict premium", type(X_raw), X_raw.shape)
+        # print("Predict premium", type(X_raw), X_raw.shape)
         return self.predict_claim_probability(X_raw) * self.y_mean
 
     #TODO - delete
