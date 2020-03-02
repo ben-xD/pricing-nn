@@ -272,7 +272,7 @@ def ClaimClassifierHyperParameterSearch():
     [test_data, test_labels] = claimClassifier.get_test_data()
     claimClassifier.fit(X, y, hparams=hparams, num_hidden_layers=num_hidden_layers, layer_sizes=layer_sizes)                                                                                                                                                                                                                    
     claimClassifier.save_model()
-    
+
     probabilities = claimClassifier.predict(pd.DataFrame(test_data))
     final_auc, final_accuracy = claimClassifier.evaluate_architecture(probabilities, test_labels)
     print(f'AUC ROC: {final_auc} and Accuracy: {final_accuracy}')
@@ -288,6 +288,12 @@ def LayerHyperParameterSearch(X, y, hparams):
     num_layers = [1,2,4,8,16,32, MAX_LAYER]
     layer_sizes = list(range(1, MAX_LAYER+1))
 
+    auc_scores = []
+    accuracy_scores = []
+    best_num_hidden_layers = None
+    best_layer_sizes = None
+    best_auc_score = 0
+    
     #Create models with different numbers of hidden layers
     for num_hidden_layers in num_layers:
 
