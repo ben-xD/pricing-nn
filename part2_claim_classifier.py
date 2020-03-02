@@ -37,7 +37,7 @@ class ClaimClassifier():
         # Normalisation (also saved for testing data later)                                                                                                                                                                                                                   
         return self.scaler.fit_transform(X_raw)                                                                                                                                                                                                                               
                                                                                                                                                                                                                                                                               
-    def fit(self, X_raw, y_raw, hparams=None, weighting=1, num_hidden_layers=2, layer_sizes=None):                                                                                                                                                    
+    def fit(self, X_raw, y_raw, hparams=None, weighting=9, num_hidden_layers=2, layer_sizes=None):                                                                                                                                                    
                                                                                                                                                                                                                                                               
         # Shuffle data                                                                                                                                                                                                                                                        
         state = np.random.get_state()                                                                                                                                                                                                                                         
@@ -293,7 +293,7 @@ def LayerHyperParameterSearch(X, y, hparams):
     best_num_hidden_layers = None
     best_layer_sizes = None
     best_auc_score = 0
-    
+
     #Create models with different numbers of hidden layers
     for num_hidden_layers in num_layers:
 
