@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from statistics import mean
 import matplotlib.pyplot as plt
-from neural_net3 import NeuralNet
+from NeuralNet import NeuralNet
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_auc_score
