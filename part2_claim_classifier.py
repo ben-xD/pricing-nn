@@ -267,7 +267,7 @@ def ClaimClassifierHyperParameterSearch():
           best_auc_score = auc_scores_np[best_index]
               
     print(f'Best hyperparameters: {best_hparams} with auc_score: {best_auc_score}')
-
+    print(f'Best number hidden layers: {num_hidden_layers} and number of neurons {layer_sizes}')
     #Evaluate the tuned model on the test set and save this best model
     [test_data, test_labels] = claimClassifier.get_test_data()
     claimClassifier.fit(X, y, hparams=hparams, num_hidden_layers=num_hidden_layers, layer_sizes=layer_sizes)                                                                                                                                                                                                                    

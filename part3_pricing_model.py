@@ -14,9 +14,15 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from statistics import mean
 import matplotlib.pyplot as plt
-
-
-from NeuralNet import NeuralNet
+from neural_net3 import NeuralNet
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_curve
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn import preprocessing
 
 
 def fit_and_calibrate_classifier(classifier, X, y):
@@ -153,7 +159,7 @@ class PricingModel():
         normalised_features = preprocessing.MinMaxScaler().fit_transform(features)
         return normalised_features
 
-    def fit(self, X_raw, y_raw, claims_raw, weighting=9, learning_rate=0.001, batch_size=20, num_epochs=30, hidden_size=50):
+    def fit(self, X_raw, y_raw, claims_raw, weighting=8, learning_rate=0.01, batch_size=10, num_epochs=100):
         """Classifier training function.
 
         Here you will use the fit function for your classifier.
@@ -174,23 +180,7 @@ class PricingModel():
         """
         nnz = np.where(claims_raw != 0)[0]
         self.y_mean = np.mean(claims_raw[nnz])  # Average of all claims
-        # =============================================================
-
-        # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITES
-        # if self.calibrate:
-        #     self.base_classifier = fit_and_calibrate_classifier(
-        #         self.base_classifier, X_clean, y_raw)
-        # else:
-        #     self.base_classifier = self.base_classifier.fit(X_clean, y_raw)
-        # return self.base_classifier
-
-        # Reshuffle data, we can't trust input if main() was used (e.g. LabTS?)
-        # state = np.random.get_state()
-        # X_raw = X_raw.sample(frac=1).reset_index(drop=True)
-        # np.random.set_state(state)
-        # y_raw = y_raw.sample(frac=1).reset_index(drop=True)
-
-        # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
+      
         X_clean = self._preprocessor(X_raw, train=True)
 
         # Split train and validation
@@ -221,7 +211,7 @@ class PricingModel():
         output_size = 1
 
         # Create a model with hyperparameters
-        model = NeuralNet(num_inputs, hidden_size, output_size)
+        model = NeuralNet(num_inputs, output_size)
 
         # Weight positive samples higher
         pos_weight = torch.ones([1])
@@ -248,12 +238,8 @@ class PricingModel():
                     yb, y_classified.detach().numpy()))
                 # print(loss)
 
-                # Backward and optimize
                 loss.backward()
-                # Arbitrary value as per stack overflow
-                # Prevent loss 'blowing up' https://stackoverflow.com/questions/33962226/common-causes-of-nans-during-training
-                # clipping_value = 1
-                # nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
+
                 optimizer.step()
                 optimizer.zero_grad()
 
@@ -337,32 +323,38 @@ class PricingModel():
         return self.predict_claim_probability(X_raw) * self.y_mean * 0.3
         
 
-    #TODO - delete
-    def evaluate_architecture(self, probabilities, labels):
-        """Architecture evaluation utility.
+    def evaluate_architecture(self, probabilities, labels):                                                                                                                                                                                                                   
+        """Architecture evaluation utility.                                                                                                                                                                                                                                   
+                                                                                                                                                                                                                                                                              
+        Populate this function with evaluation utilities for your                                                                                                                                                                                                             
+        neural network.                                                                                                                                                                                                                                                       
+                                                                                                                                                                                                                                                                              
+        You can use external libraries such as scikit-learn for this                                                                                                                                                                                                          
+        if necessary.                                                                                                                                                                                                                                                         
+        """                                                                                                                                                                                                                                                                   
+                                                                                                                                                                                                                                                                              
+        # Convert probabilities into binary classification                                                                                                                                                                                                        
+        sigmoid = nn.Sigmoid()                                                                                                                                                                                                                                                
+        predictions = probabilities.round()                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+                                                                                                                                                                                                                                                                              
+        target_names = ['not claimed', 'claimed']                                                                                                                                                                                                                             
 
-        Populate this function with evaluation utilities for your
-        neural network.
-
-        You can use external libraries such as scikit-learn for this
-        if necessary.
-        """
-        predictions = probabilities.round()
-
-        target_names = ['not claimed', 'claimed']
-        print(f'labels {labels} of size {labels.shape}')
-        print(f'predictions {predictions} of size {predictions.shape}')
-        print(f'probabilities {probabilities} of size {probabilities.shape}')
-
-        print(classification_report(labels.astype(int), predictions.astype(int)))
-
+        #Metrics                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
         print(confusion_matrix(labels, predictions))
-        auc_score = roc_auc_score(labels, probabilities)
-        print(f'auc: {auc_score}')
-        print("Accuracy: ", accuracy_score(labels, predictions))
-        #print("Labels: ", labels)
-        #print("Predictions: ", predictions)
-        return auc_score
+
+        precision = precision_score(labels, predictions)                                                                                                                                                                                                                                
+        print("Precision: ", precision)
+
+        recall = recall_score(labels, predictions)                                                                                                                                                                                                                                
+        print("Recall: ", recall)
+
+        auc_score = roc_auc_score(labels, probabilities)                                                                                                                                                                                                                      
+        print("AUC ROC: ", auc_score)
+
+        accuracy = accuracy_score(labels, predictions)                                                                                                                                                                                                                                
+        print("Accuracy: ", accuracy)                                                                                                                                                                                                            
+                                                                                                                                                                                                                              
+        return auc_score, accuracy      
 
     def save_model(self):
         """Saves the class instance as a pickle file."""
@@ -396,31 +388,6 @@ def main():
     test_data.reset_index(drop=True, inplace=True)
     test_set = test_data.drop(columns=["made_claim", "claim_amount"])
     test_labels = test_data["made_claim"]
-    # test_claims_raw = test_data["claim_amount"]
-
-    # # In the form of part 2 (need to change _preprocessor to part2 form too). Tested to get auc: 0.6320862281258937
-    # train_set = df1.filter([
-    #     "drv_age1",
-    #     "vh_age",
-    #     "vh_cyl",
-    #     "vh_din",
-    #     "pol_bonus",
-    #     "vh_sale_begin",
-    #     "vh_sale_end",
-    #     "vh_value",
-    #     "vh_speed",
-    # ])
-    # train_labels = df1["made_claim"]
-    # claims_raw = df1["claim_amount"]
-
-    # pricingModel = PricingModel()
-    # pricingModel.fit(train_set, train_labels, claims_raw)
-    # pricingModel.save_model()
-
-    # probabilities = pricingModel.predict_claim_probability(train_set)
-    # predictions = pricingModel.predict_premium(train_set)
-    # pricingModel.evaluate_architecture(probabilities, train_labels.to_numpy())
-    # # end if the form of part 2
 
     pricingModel = PricingModel()
     pricingModel.fit(train_set, train_labels, train_claims_raw)

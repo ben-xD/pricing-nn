@@ -1,21 +1,23 @@
 from torch import nn
 
 class NeuralNet(nn.Module):
-    def __init__(self, input_size, num_layers, layer_sizes, output_size):
-        super(NeuralNet, self).__init__()
+    def _init_(self, input_size, output_size):
+        super(NeuralNet, self)._init_()
 
-        print(layer_sizes)
+        self.fc1 = nn.Linear(input_size, 4)
+        self.hidden1 = nn.Linear(4, 22)
+        self.hidden2 = nn.Linear(22, 26)
+        self.hidden3 = nn.Linear(26, 64)
+        self.fc2 = nn.Linear(64, output_size)
         self.relu = nn.ReLU()
-        self.linears = nn.ModuleList([nn.Linear(input_size, layer_sizes[0])])
-        self.linears.extend([nn.Linear(layer_sizes[i], layer_sizes[i+1]) for i in range(0, num_layers-1)])
-        self.linears.append(nn.Linear(layer_sizes[num_layers-1], output_size))
-        print(self.linears)
 
     def forward(self, x):
-        y = x
-        for i in range(len(self.linears)):
-          y = self.linears[i](y)
-          #Apply relu to all layers but the last
-          if(i < len(self.linears) - 1):
-            y = self.relu(y)
-        return y 
+        out = self.fc1(x)
+        out = self.hidden1(out)
+        out = self.relu(out)
+        out = self.hidden2(out)
+        out = self.relu(out)
+        out = self.hidden3(out)
+        out = self.relu(out)
+        out = self.fc2(out)
+        return out
